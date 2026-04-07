@@ -1,6 +1,8 @@
-// 聊天主内容区域样式
-// 负责消息列表的滚动展示、欢迎界面、输入框布局及底部免责声明
-
+/**
+ * 文件说明：聊天主内容区域样式
+ * 样式说明：负责消息列表、输入区、来源侧栏联动与过渡动效
+ * 关键布局说明：桌面端来源面板从右侧滑入，移动端切换为底部弹层
+ */
 @use '../../styles/variables.scss' as *;
 
 .container {
@@ -13,26 +15,48 @@
   &.welcomeMode {
     background-color: $color-bg;
   }
+
+  &.panelOpen {
+    .chatArea {
+      padding-right: 384px;
+    }
+
+    .inputArea {
+      width: min(920px, calc(100% - 420px));
+      transform: translateX(calc(-50% - 192px));
+    }
+
+    .scrollDownButton {
+      z-index: 24;
+      transform: translateX(calc(460px - 252px));
+
+      &:hover {
+        transform: translateX(calc(460px - 252px)) translateY(-2px);
+      }
+
+      &:active {
+        transform: translateX(calc(460px - 252px)) translateY(0);
+      }
+    }
+  }
 }
 
-// 聊天区域：包含消息列表或欢迎界面
 .chatArea {
   flex: 1;
   overflow-y: auto;
   @include flex(column, flex-start, stretch);
-  position: relative; // 确保内部绝对定位元素（如滚动按钮）相对于此容器定位
+  position: relative;
+  transition: padding-right 0.32s cubic-bezier(0.22, 1, 0.36, 1);
   @include scrollbar;
 }
 
-// 欢迎页面居中内容
 .welcomeContent {
   flex: 1;
   @include flex(column, center, center);
   padding: 20px;
-  margin-top: -80px; // 视觉修正，使其看起来更居中
+  margin-top: -80px;
 }
 
-// 加载状态容器
 .loadingWrapper {
   flex: 1;
   @include flex-center;
@@ -45,22 +69,20 @@
   margin-top: 32px;
 }
 
-// 消息列表容器：居中展示，最大宽度 920px
 .messagesList {
   width: 100%;
   max-width: 920px;
   margin: 0 auto;
   @include flex(column, flex-start, stretch);
   gap: 0;
-  padding: 40px 20px 200px; // 增加底部内边距，确保最后一条消息离输入框有足够空间
+  padding: 40px 20px 200px;
 }
 
-// 滚动到底部按钮
 .scrollDownButton {
   position: absolute;
-  bottom: 180px; // 输入框上方
+  bottom: 180px;
   left: 50%;
-  transform: translateX(calc(460px - 60px)); // 460px 是 920px 的一半，60px 是偏移量
+  transform: translateX(calc(460px - 60px));
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -71,7 +93,7 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   color: $color-text-secondary;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 100;
+  z-index: 24;
   animation: fadeIn 0.3s ease;
 
   &:hover {
@@ -86,26 +108,34 @@
   }
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateX(calc(460px - 60px)) translateY(10px); }
-  to { opacity: 1; transform: translateX(calc(460px - 60px)) translateY(0); }
-}
-
-// 输入区域：固定在底部
 .inputArea {
   width: 100%;
   max-width: 920px;
   margin: 0 auto;
-  padding: 0 20px 0px;
+  padding: 0 20px 0;
   position: absolute;
   bottom: 0;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
-  background: linear-gradient(to top, $color-bg 40%, transparent); // 减弱渐变背景的高度
+  background: linear-gradient(to top, $color-bg 40%, transparent);
+  transition:
+    width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-// 底部免责声明文本
+.panelBackdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.08) 100%);
+  z-index: 30;
+  pointer-events: none;
+  animation: panelFadeIn 0.22s ease;
+}
+
 .disclaimer {
   font-size: $font-size-sm;
   color: $color-text-tertiary;
@@ -114,8 +144,42 @@
   letter-spacing: 0.1px;
 }
 
-// 移动端适配
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(calc(460px - 60px)) translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(calc(460px - 60px)) translateY(0);
+  }
+}
+
+@keyframes panelFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
 @media (max-width: 750px) {
+  .container.panelOpen {
+    .chatArea {
+      padding-right: 0;
+      padding-bottom: min(76vh, 640px);
+    }
+
+    .inputArea {
+      width: 100%;
+      max-width: 100%;
+      transform: translateX(-50%);
+    }
+  }
+
   .welcomeContent {
     margin-top: -40px;
     padding: 0 16px;
@@ -126,8 +190,10 @@
     right: 20px;
     bottom: 140px;
     transform: none;
+    z-index: 24;
 
-    &:hover, &:active {
+    &:hover,
+    &:active {
       transform: translateY(-2px);
     }
   }
@@ -142,15 +208,20 @@
   }
 
   .messagesList {
-    padding: 0px 5px 160px; // 增加底部内边距以防被输入框遮挡
+    padding: 0 5px 160px;
     gap: 0;
   }
-  
+
   .inputArea {
     width: 100%;
-    padding: 0 12px 5px; // 调整底部间距
+    padding: 0 12px 5px;
     max-width: 100%;
-    background: linear-gradient(to top, $color-bg 85%, transparent); // 调整渐变背景
+    background: linear-gradient(to top, $color-bg 85%, transparent);
+  }
+
+  .panelBackdrop {
+    background: rgba(0, 0, 0, 0.24);
+    pointer-events: auto;
   }
 
   .disclaimer {

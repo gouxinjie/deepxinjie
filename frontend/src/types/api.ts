@@ -46,6 +46,22 @@ export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
 export type MessageRole = 'user' | 'assistant';
 
 /**
+ * 联网搜索引用信息。
+ */
+export interface SearchCitation {
+  /** 引用编号 */
+  id: number;
+  /** 网页标题 */
+  title: string;
+  /** 网页链接 */
+  url: string;
+  /** 来源域名 */
+  domain: string;
+  /** 摘要内容 */
+  snippet: string;
+}
+
+/**
  * 登录用户信息。
  */
 export interface AuthUser {
@@ -143,6 +159,10 @@ export interface MessageRecord {
   content: string;
   /** 推理内容 */
   reasoning?: string;
+  /** 联网搜索引用 */
+  citations?: SearchCitation[];
+  /** 联网搜索状态 */
+  search_status?: string;
   /** 思考耗时 */
   thinking_time?: number;
 }
@@ -185,6 +205,10 @@ export interface ChatStreamChunk {
   content?: string;
   /** 推理分片 */
   reasoning?: string;
+  /** 联网搜索引用 */
+  citations?: SearchCitation[];
+  /** 联网搜索状态 */
+  search_status?: string;
   /** 思考耗时 */
   thinking_time?: number;
 }

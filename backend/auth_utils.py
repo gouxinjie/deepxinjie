@@ -2,8 +2,11 @@ import os
 from typing import Optional
 
 import jwt
+from dotenv import load_dotenv
 from fastapi import Header, HTTPException, status
 from jwt import ExpiredSignatureError, InvalidTokenError
+
+load_dotenv()
 
 
 def get_required_env(name: str) -> str:

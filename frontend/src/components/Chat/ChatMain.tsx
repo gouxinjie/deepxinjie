@@ -1,6 +1,6 @@
 /**
  * @component ChatMain
- * @description 聊天主内容区域，负责消息加载、发送、流式渲染和会话切换
+ * @description 聊天主内容区域，负责消息加载、发送、流式渲染、会话切换与来源侧栏联动
  * @author gouxinjie
  * @created 2026-03-16
  * @updated 2026-04-07
@@ -12,6 +12,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 import styles from './ChatMain.module.scss';
 import ChatAnchor from './ChatAnchor';
+import ChatCitationPanel from './ChatCitationPanel';
 import ChatInput from './ChatInput';
 import ChatMessage from './ChatMessage';
 import ChatWelcome from './ChatWelcome';
@@ -20,10 +21,25 @@ import type { Message } from '../../types/chat';
 import type { ChatStreamChunk, MessageRecord } from '../../types/api';
 
 interface ChatMainProps {
+  /** 是否开启深度思考 */
   isDeepThink: boolean;
+  /** 更新深度思考状态 */
   setIsDeepThink: (val: boolean) => void;
+  /** 是否开启联网搜索 */
   isSearch: boolean;
+  /** 更新联网搜索状态 */
   setIsSearch: (val: boolean) => void;
+}
+
+interface CitationPanelState {
+  /** 当前来源面板所属消息 ID */
+  messageId: string;
+  /** 当前来源列表 */
+  citations: Message['citations'];
+  /** 当前来源状态提示 */
+  searchStatus?: string;
+  /** 当前高亮来源编号 */
+  activeCitationId?: number | null;
 }
 
 const ChatMain: React.FC<ChatMainProps> = ({
@@ -38,6 +54,8 @@ const ChatMain: React.FC<ChatMainProps> = ({
   const [activeAnchorId, setActiveAnchorId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [requestError, setRequestError] = useState('');
+  const [citationPanelState, setCitationPanelState] = useState<CitationPanelState | null>(null);
+  const [isCitationPanelVisible, setIsCitationPanelVisible] = useState(false);
 
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
@@ -90,7 +108,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
     }
 
     const containerTop = chatAreaRef.current.getBoundingClientRect().top;
-    let currentAnchorId = anchorItems[0].id;
+    let currentAnchor = anchorItems[0].id;
 
     for (const anchor of anchorItems) {
       const target = messageRefs.current[anchor.id];
@@ -100,13 +118,13 @@ const ChatMain: React.FC<ChatMainProps> = ({
 
       const targetTop = target.getBoundingClientRect().top - containerTop;
       if (targetTop <= 120) {
-        currentAnchorId = anchor.id;
+        currentAnchor = anchor.id;
       } else {
         break;
       }
     }
 
-    setActiveAnchorId(currentAnchorId);
+    setActiveAnchorId(currentAnchor);
   };
 
   /**
@@ -124,9 +142,65 @@ const ChatMain: React.FC<ChatMainProps> = ({
   };
 
   /**
+   * 打开右侧来源侧栏。
+   * @param payload - 来源侧栏数据
+   */
+  const handleOpenCitations = (payload: { message: Message; activeCitationId?: number }) => {
+    setCitationPanelState({
+      messageId: payload.message.id,
+      citations: payload.message.citations,
+      searchStatus: payload.message.searchStatus,
+      activeCitationId: payload.activeCitationId ?? null,
+    });
+    setIsCitationPanelVisible(true);
+  };
+
+  /**
+   * 关闭右侧来源侧栏。
+   */
+  const handleCloseCitations = () => {
+    setIsCitationPanelVisible(false);
+  };
+
+  /**
+   * 在关闭动画完成后再卸载来源侧栏。
+   */
+  useEffect(() => {
+    if (isCitationPanelVisible || !citationPanelState) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setCitationPanelState(null);
+    }, 320);
+
+    return () => window.clearTimeout(timer);
+  }, [citationPanelState, isCitationPanelVisible]);
+
+  /**
+   * 来源侧栏打开时支持通过 Esc 快捷关闭。
+   */
+  useEffect(() => {
+    if (!isCitationPanelVisible) {
+      return undefined;
+    }
+
+    const handleKeydown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsCitationPanelVisible(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeydown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeydown);
+    };
+  }, [isCitationPanelVisible]);
+
+  /**
    * 将后端消息结构映射为前端展示结构。
    * @param records - 后端返回的消息数组
-   * @returns 前端消息数组
    */
   const formatMessages = (records: MessageRecord[]): Message[] => {
     return records.map((record) => ({
@@ -134,6 +208,8 @@ const ChatMain: React.FC<ChatMainProps> = ({
       role: record.role,
       content: record.content,
       reasoning: record.reasoning,
+      citations: record.citations,
+      searchStatus: record.search_status,
       thinkingTime: record.thinking_time,
     }));
   };
@@ -151,6 +227,8 @@ const ChatMain: React.FC<ChatMainProps> = ({
       if (response.data.success) {
         shouldScrollInstant.current = true;
         setMessages(formatMessages(response.data.data.messages));
+        setCitationPanelState(null);
+        setIsCitationPanelVisible(false);
         return;
       }
 
@@ -184,6 +262,14 @@ const ChatMain: React.FC<ChatMainProps> = ({
         nextMessage.reasoning = `${nextMessage.reasoning || ''}${chunk.reasoning}`;
         nextMessage.isThinking = true;
         nextMessage.isLoading = false;
+      }
+
+      if (chunk.citations) {
+        nextMessage.citations = chunk.citations;
+      }
+
+      if (chunk.search_status) {
+        nextMessage.searchStatus = chunk.search_status;
       }
 
       if (typeof chunk.thinking_time === 'number') {
@@ -230,7 +316,6 @@ const ChatMain: React.FC<ChatMainProps> = ({
 
   /**
    * 启动一次新的流式对话。
-   * @param options - 流式请求参数
    */
   const startStream = async (options: {
     content: string;
@@ -438,6 +523,8 @@ const ChatMain: React.FC<ChatMainProps> = ({
       setRequestError('');
       setMessages([]);
       setIsLoading(false);
+      setCitationPanelState(null);
+      setIsCitationPanelVisible(false);
       isStartingNewChat.current = false;
     }, 0);
 
@@ -472,12 +559,15 @@ const ChatMain: React.FC<ChatMainProps> = ({
       : (anchorItems[anchorItems.length - 1]?.id ?? '');
 
   return (
-    <div className={classNames(styles.container, { [styles.welcomeMode]: messages.length === 0 && !isLoading })}>
+    <div
+      className={classNames(styles.container, {
+        [styles.welcomeMode]: messages.length === 0 && !isLoading,
+        [styles.panelOpen]: isCitationPanelVisible,
+      })}
+    >
       <div className={styles.chatArea} ref={chatAreaRef} onScroll={handleScroll}>
         {isLoading ? (
-          <div className={styles.loadingWrapper}>
-            {/* 加载历史消息时保留占位，避免闪烁 */}
-          </div>
+          <div className={styles.loadingWrapper} />
         ) : messages.length === 0 ? (
           <div className={styles.welcomeContent}>
             <ChatWelcome />
@@ -505,6 +595,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
                   message={message}
                   onEditUserMessage={handleEdit}
                   onRegenerate={() => handleRegenerate(message.id)}
+                  onOpenCitations={handleOpenCitations}
                 />
               </div>
             ))}
@@ -523,9 +614,11 @@ const ChatMain: React.FC<ChatMainProps> = ({
         </button>
       )}
 
-      <div className={styles.anchorContainer}>
-        <ChatAnchor items={anchorItems} currentId={currentAnchorId} onAnchorClick={handleAnchorClick} />
-      </div>
+      {!isCitationPanelVisible && (
+        <div className={styles.anchorContainer}>
+          <ChatAnchor items={anchorItems} currentId={currentAnchorId} onAnchorClick={handleAnchorClick} />
+        </div>
+      )}
 
       {messages.length > 0 && (
         <div className={styles.inputArea}>
@@ -546,6 +639,24 @@ const ChatMain: React.FC<ChatMainProps> = ({
         <div className={styles.inputArea}>
           <p className={styles.disclaimer}>请求异常：{requestError}</p>
         </div>
+      )}
+
+      {citationPanelState && (
+        <>
+          <button
+            type="button"
+            className={styles.panelBackdrop}
+            onClick={handleCloseCitations}
+            aria-label="关闭来源侧栏遮罩"
+          />
+          <ChatCitationPanel
+            visible={isCitationPanelVisible}
+            citations={citationPanelState.citations || []}
+            searchStatus={citationPanelState.searchStatus}
+            activeCitationId={citationPanelState.activeCitationId}
+            onClose={handleCloseCitations}
+          />
+        </>
       )}
     </div>
   );

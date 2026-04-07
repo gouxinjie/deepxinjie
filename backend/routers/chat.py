@@ -1,3 +1,7 @@
+"""
+聊天相关接口。
+"""
+
 import asyncio
 import json
 import os
@@ -11,6 +15,7 @@ from pydantic import BaseModel, Field
 
 from auth_utils import get_current_user_id
 from db import connection_pool, get_db
+from services.search_service import SearchCitation, prepare_search_context
 
 load_dotenv()
 
@@ -18,6 +23,11 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+
+ASSISTANT_METADATA_START = "<metadata>\n"
+ASSISTANT_METADATA_END = "\n</metadata>\n"
+ASSISTANT_REASONING_START = "<reasoning>\n"
+ASSISTANT_REASONING_END = "\n</reasoning>\n"
 
 # DeepSeek 客户端仅在配置了 API Key 时初始化。
 # 未配置时会自动走本地兜底回复，便于开发联调。
@@ -47,12 +57,6 @@ class MessageUpdate(BaseModel):
 class SendMessageRequest(BaseModel):
     """
     发送消息请求体。
-
-    参数：
-    - content: 用户消息内容。
-    - is_deepthink: 是否启用深度思考模式。
-    - is_search: 是否启用联网搜索模式。
-    - session_id: 当前会话 ID，必须为当前用户所有。
     """
 
     content: str = Field(..., min_length=1)
@@ -85,15 +89,91 @@ def build_error_response(code: int, message: str, data: Any = None) -> dict[str,
     }
 
 
+def build_assistant_metadata(
+    citations: list[SearchCitation],
+    search_status: Optional[str],
+) -> dict[str, Any]:
+    """
+    构造助手消息元数据。
+    """
+    metadata: dict[str, Any] = {}
+    if citations:
+        metadata["citations"] = [citation.to_dict() for citation in citations]
+    if search_status:
+        metadata["search_status"] = search_status
+    return metadata
+
+
+def encode_assistant_content(
+    content: str,
+    reasoning: str = "",
+    metadata: Optional[dict[str, Any]] = None,
+) -> str:
+    """
+    将助手正文、推理和搜索元数据编码为可持久化文本。
+    """
+    content_parts: list[str] = []
+    if metadata:
+        content_parts.append(
+            f"{ASSISTANT_METADATA_START}"
+            f"{json.dumps(metadata, ensure_ascii=False)}"
+            f"{ASSISTANT_METADATA_END}"
+        )
+    if reasoning:
+        content_parts.append(
+            f"{ASSISTANT_REASONING_START}{reasoning}{ASSISTANT_REASONING_END}"
+        )
+    content_parts.append(content)
+    return "".join(content_parts)
+
+
+def decode_assistant_content(raw_content: str) -> dict[str, Any]:
+    """
+    解析助手消息中的元数据、推理内容与正文。
+    """
+    remaining_content = raw_content
+    metadata: dict[str, Any] = {}
+    reasoning = ""
+
+    if remaining_content.startswith(ASSISTANT_METADATA_START):
+        metadata_end_index = remaining_content.find(ASSISTANT_METADATA_END)
+        if metadata_end_index != -1:
+            metadata_raw = remaining_content[
+                len(ASSISTANT_METADATA_START):metadata_end_index
+            ]
+            try:
+                parsed_metadata = json.loads(metadata_raw)
+                if isinstance(parsed_metadata, dict):
+                    metadata = parsed_metadata
+            except json.JSONDecodeError:
+                metadata = {}
+            remaining_content = remaining_content[
+                metadata_end_index + len(ASSISTANT_METADATA_END):
+            ]
+
+    if remaining_content.startswith(ASSISTANT_REASONING_START):
+        reasoning_end_index = remaining_content.find(ASSISTANT_REASONING_END)
+        if reasoning_end_index != -1:
+            reasoning = remaining_content[
+                len(ASSISTANT_REASONING_START):reasoning_end_index
+            ]
+            remaining_content = remaining_content[
+                reasoning_end_index + len(ASSISTANT_REASONING_END):
+            ]
+
+    citations = metadata.get("citations", [])
+    search_status = metadata.get("search_status")
+    return {
+        "content": remaining_content,
+        "reasoning": reasoning,
+        "citations": citations if isinstance(citations, list) else [],
+        "search_status": search_status if isinstance(search_status, str) else None,
+    }
+
+
 def require_owned_session(session_id: int, user_id: int, db: Any) -> dict[str, Any]:
     """
     校验会话是否归当前用户所有。
-
-    返回：
-    - 当前会话记录。
-
-    异常：
-    - 当会话不存在或不属于当前用户时抛出 404。
     """
     cursor = db.cursor(dictionary=True)
     try:
@@ -120,12 +200,6 @@ def require_owned_session(session_id: int, user_id: int, db: Any) -> dict[str, A
 def require_owned_message(message_id: int, user_id: int, db: Any) -> dict[str, Any]:
     """
     校验消息是否归当前用户所有。
-
-    返回：
-    - 消息以及所属会话的必要信息。
-
-    异常：
-    - 当消息不存在或不属于当前用户时抛出 404。
     """
     cursor = db.cursor(dictionary=True)
     try:
@@ -182,10 +256,6 @@ async def generate_response(
 ) -> AsyncGenerator[str, None]:
     """
     调用大模型并以 SSE 形式流式输出内容。
-
-    说明：
-    - 当前仅保留 is_search 参数以兼容前端设置。
-    - 实际联网搜索能力尚未接入模型工具链，后续可在这里扩展。
     """
     model = "deepseek-reasoner" if is_deepthink else "deepseek-chat"
     messages: list[dict[str, str]] = []
@@ -212,20 +282,44 @@ async def generate_response(
     history.reverse()
     for item in history:
         raw_content = str(item["content"])
-        if item["role"] == "assistant" and "<reasoning>" in raw_content:
-            parts = raw_content.split("</reasoning>\n", maxsplit=1)
-            raw_content = parts[1] if len(parts) == 2 else raw_content.replace("<reasoning>", "").replace("</reasoning>", "")
+        if item["role"] == "assistant":
+            parsed_assistant_content = decode_assistant_content(raw_content)
+            raw_content = str(parsed_assistant_content["content"])
         messages.append({"role": str(item["role"]), "content": raw_content})
 
     messages.append({"role": "user", "content": content})
 
-    # 当前暂未接入搜索能力，仅保留参数避免前后端协议断裂。
-    _ = is_search
-
     full_content = ""
     full_reasoning = ""
+    search_status: Optional[str] = None
+    citations: list[SearchCitation] = []
     start_time = asyncio.get_running_loop().time()
     reasoning_end_time: Optional[float] = None
+
+    if is_search:
+        citations, search_context, search_status = await prepare_search_context(content)
+        if search_context:
+            messages.insert(
+                0,
+                {
+                    "role": "system",
+                    "content": (
+                        "你是一个联网搜索助手。"
+                        "回答时必须优先参考已提供的联网搜索结果。"
+                        "如果搜索结果不足以支撑结论，必须明确说明。"
+                        "当引用搜索结果时，请在对应结论后使用 [来源1] 这样的编号。"
+                        "不要编造搜索结果中不存在的信息。\n\n"
+                        f"联网搜索结果如下：\n{search_context}"
+                    ),
+                },
+            )
+            yield (
+                f"data: {json.dumps({'citations': [citation.to_dict() for citation in citations], 'search_status': search_status}, ensure_ascii=False)}\n\n"
+            )
+        elif search_status:
+            yield (
+                f"data: {json.dumps({'search_status': search_status}, ensure_ascii=False)}\n\n"
+            )
 
     try:
         if client is None:
@@ -285,9 +379,11 @@ async def generate_response(
             (session_id, "user", content),
         )
 
-        assistant_content = full_content
-        if full_reasoning:
-            assistant_content = f"<reasoning>\n{full_reasoning}\n</reasoning>\n{full_content}"
+        assistant_content = encode_assistant_content(
+            content=full_content,
+            reasoning=full_reasoning,
+            metadata=build_assistant_metadata(citations, search_status),
+        )
 
         cursor.execute(
             """
@@ -319,11 +415,6 @@ async def send_message(
 ) -> StreamingResponse:
     """
     发送消息并返回流式响应。
-
-    安全约束：
-    - 必须登录。
-    - session_id 必须属于当前用户。
-    - 改为 POST，避免将用户输入暴露到 URL 查询串。
     """
     require_owned_session(payload.session_id, user_id, db)
     return StreamingResponse(
@@ -498,14 +589,12 @@ async def get_messages(
         messages = cursor.fetchall()
 
         for message in messages:
-            if message["role"] == "assistant" and "<reasoning>" in str(message["content"]):
-                parts = str(message["content"]).split("</reasoning>\n", maxsplit=1)
-                if len(parts) == 2:
-                    message["reasoning"] = parts[0].replace("<reasoning>\n", "")
-                    message["content"] = parts[1]
-                else:
-                    message["reasoning"] = str(message["content"]).replace("<reasoning>\n", "").replace("</reasoning>", "")
-                    message["content"] = ""
+            if message["role"] == "assistant":
+                parsed_assistant_content = decode_assistant_content(str(message["content"]))
+                message["reasoning"] = parsed_assistant_content["reasoning"]
+                message["citations"] = parsed_assistant_content["citations"]
+                message["search_status"] = parsed_assistant_content["search_status"]
+                message["content"] = parsed_assistant_content["content"]
 
             if "thinking_time" not in message or message["thinking_time"] is None:
                 message["thinking_time"] = 0
@@ -526,9 +615,6 @@ async def update_message(
 ) -> dict[str, Any]:
     """
     编辑当前用户自己的消息内容。
-
-    约束：
-    - 当前只允许编辑用户消息，不允许直接改写模型回复。
     """
     message = require_owned_message(message_id, user_id, db)
     if str(message["role"]) != "user":
@@ -562,9 +648,6 @@ async def delete_messages(
 ) -> dict[str, Any]:
     """
     删除当前用户某个会话内的消息。
-
-    参数：
-    - after_id: 若提供，则仅删除该消息之后的内容。
     """
     require_owned_session(session_id, user_id, db)
 

@@ -50,10 +50,10 @@
   }
 
   .userBubble {
-    max-width: 85%; // 移动端气泡占比增加
+    max-width: 85%;
     font-size: $font-size-base;
     padding: 10px 14px;
-    border-radius: $radius-xl; // 移动端同步修改为四周圆角 12px
+    border-radius: $radius-xl;
   }
 
   .actions {
@@ -61,7 +61,7 @@
     gap: 4px;
 
     .actionBtn {
-      padding: 6px; // 增加点击区域
+      padding: 6px;
     }
   }
 
@@ -92,7 +92,7 @@
     font-size: $font-size-base;
     user-select: none;
     padding: 4px 10px;
-    margin-left: -10px; // 对齐图标位置
+    margin-left: -10px;
     border-radius: $radius-md;
     width: fit-content;
     transition: background-color 0.2s;
@@ -103,6 +103,7 @@
 
     &.thinking {
       cursor: default;
+
       &:hover {
         background-color: transparent;
       }
@@ -111,17 +112,17 @@
 
   &Text {
     font-weight: $font-weight-normal;
-    color: $color-text-main; // 更接近 UI 图中深色文字
+    color: $color-text-main;
     font-size: $font-size-base;
   }
 
   &Content {
     font-size: $font-size-base;
-    color: $color-text-secondary; // UI 图中的灰色文字
+    color: $color-text-secondary;
     line-height: 1.6;
     padding: 4px 0 12px 16px;
     white-space: pre-wrap;
-    border-left: 2px solid $color-border-light; // 更浅的边框色
+    border-left: 2px solid $color-border-light;
     margin: 4px 0 8px 8px;
     font-family: inherit;
 
@@ -136,6 +137,7 @@
 
       li {
         margin-bottom: 2px;
+
         &::marker {
           font-size: 0.85em;
           color: $color-text-tertiary;
@@ -147,7 +149,7 @@
 
 .brainIcon {
   @include flex-center;
-  color: $color-primary; // DeepXinjie Logo 蓝色
+  color: $color-primary;
 
   &.pulsing {
     animation: pulse 2s infinite ease-in-out;
@@ -185,9 +187,21 @@
   color: $color-text-main;
   width: 100%;
 
-  /* Markdown Styles */
+  .searchStatus {
+    margin-bottom: 12px;
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: $radius-full;
+    background-color: $color-bg-soft;
+    color: $color-text-secondary;
+    font-size: $font-size-sm;
+    border: 1px solid $color-border-light;
+  }
+
   p {
     margin: 0 0 12px 0;
+
     &:last-child {
       margin-bottom: 0;
     }
@@ -215,7 +229,7 @@
       color: inherit;
 
       &::marker {
-        color: $color-text-tertiary; // 灰色 bullet 点
+        color: $color-text-tertiary;
       }
     }
   }
@@ -226,7 +240,7 @@
     border-radius: $radius-xs;
     font-family: "Consolas", "Monaco", monospace;
     font-size: $font-size-sm;
-    color: #d63384; /* Highlight inline code color */
+    color: #d63384;
   }
 
   pre {
@@ -244,36 +258,42 @@
       font-family: "Consolas", "Monaco", monospace;
       line-height: 1.6;
 
-      // 语法高亮覆盖 (GitHub Light 风格)
       :global {
         .hljs-comment {
           color: $color-text-tertiary;
           font-style: italic;
         }
+
         .hljs-keyword,
         .hljs-selector-tag {
           color: #d73a49;
         }
+
         .hljs-string,
         .hljs-doctag {
           color: #032f62;
         }
+
         .hljs-title,
         .hljs-section {
           color: #6f42c1;
         }
+
         .hljs-variable,
         .hljs-template-variable {
           color: #e36209;
         }
+
         .hljs-attr,
         .hljs-attribute {
           color: #005cc5;
         }
+
         .hljs-number,
         .hljs-literal {
           color: #005cc5;
         }
+
         .hljs-punctuation {
           color: $color-text-main;
         }
@@ -282,7 +302,24 @@
   }
 }
 
-// 代码块容器样式：模拟 UI 图中的圆角卡片
+.inlineCitationLink {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 4px;
+  margin: 0 2px;
+  border: none;
+  border-radius: $radius-sm;
+  background-color: rgba($color-primary, 0.12);
+  color: $color-primary;
+  font-size: inherit;
+  line-height: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background-color: rgba($color-primary, 0.18);
+  }
+}
+
 .codeBlockContainer {
   margin: 8px 0;
   width: 100%;
@@ -294,7 +331,6 @@
   flex-direction: column;
 }
 
-// 代码块头部：包含语言标识和操作按钮
 .codeBlockHeader {
   display: flex;
   justify-content: space-between;
@@ -370,6 +406,7 @@ table {
 a {
   color: $color-primary;
   text-decoration: none;
+
   &:hover {
     text-decoration: underline;
   }
@@ -417,7 +454,7 @@ a {
 .userBubble {
   background-color: $color-primary-light;
   padding: 8px 12px;
-  border-radius: $radius-4xl; // 修改为四周圆角 22px
+  border-radius: $radius-4xl;
   display: inline-block;
   font-size: $font-size-md;
   line-height: 1.6;
@@ -530,7 +567,6 @@ a {
   white-space: nowrap;
 }
 
-/* Mobile responsive */
 @media (max-width: 768px) {
   .container {
     padding: 4px 0;

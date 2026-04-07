@@ -5,7 +5,7 @@
  * @updated 2026-04-07
  */
 
-import type { MessageRole } from './api';
+import type { MessageRole, SearchCitation } from './api';
 
 /**
  * 聊天消息展示模型。
@@ -19,6 +19,10 @@ export interface Message {
   content: string;
   /** 深度思考推理过程 */
   reasoning?: string;
+  /** 联网搜索引用 */
+  citations?: SearchCitation[];
+  /** 联网搜索状态 */
+  searchStatus?: string;
   /** 是否处于思考中 */
   isThinking?: boolean;
   /** 思考耗时，单位秒 */

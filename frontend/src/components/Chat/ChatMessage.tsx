@@ -1,30 +1,60 @@
+/**
+ * @component ChatMessage
+ * @description 聊天消息组件，负责渲染用户消息、模型回复、推理过程和引用跳转入口
+ * @author gouxinjie
+ * @created 2026-03-16
+ * @updated 2026-04-07
+ */
 import React, { useEffect, useRef, useState } from 'react';
-import styles from './ChatMessage.module.scss';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
-import 'highlight.js/styles/github.css'; // 代码高亮主题样式
-import { Copy, ThumbsUp, ThumbsDown, RotateCcw, ChevronDown, Brain, Pencil, Download, Check, Share2 } from 'lucide-react';
+import 'highlight.js/styles/github.css';
+import {
+  Brain,
+  Check,
+  ChevronDown,
+  Copy,
+  Download,
+  Pencil,
+  RotateCcw,
+  Search,
+  Share2,
+  ThumbsDown,
+  ThumbsUp,
+} from 'lucide-react';
 import classNames from 'classnames';
+
+import styles from './ChatMessage.module.scss';
 import type { Message } from '../../types/chat';
 import TypingIndicator from '../commons/TypingIndicator';
 
 interface ChatMessageProps {
+  /** 当前消息 */
   message: Message;
+  /** 编辑用户消息回调 */
   onEditUserMessage?: (messageId: string, newContent: string) => void;
+  /** 重新生成回调 */
   onRegenerate?: () => void;
+  /** 打开来源侧栏回调 */
+  onOpenCitations?: (payload: { message: Message; activeCitationId?: number }) => void;
 }
 
 interface CodeProps {
   /** 节点内容 */
   children?: React.ReactNode;
-  /** 样式类名，通常包含语言信息 */
+  /** 代码块样式类名 */
   className?: string;
   /** 是否为行内代码 */
   inline?: boolean;
 }
 
-const ChatMessage: React.FC<ChatMessageProps> = ({ message, onEditUserMessage, onRegenerate }) => {
+const ChatMessage: React.FC<ChatMessageProps> = ({
+  message,
+  onEditUserMessage,
+  onRegenerate,
+  onOpenCitations,
+}) => {
   const isUser = message.role === 'user';
   const [isReasoningOpen, setIsReasoningOpen] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -43,7 +73,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onEditUserMessage, o
         startTimeRef.current = Date.now();
         setReasoningSeconds(0);
       }
-      
+
       if (!timerRef.current) {
         timerRef.current = window.setInterval(() => {
           if (startTimeRef.current) {
@@ -56,7 +86,6 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onEditUserMessage, o
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
-      // If we have a persisted thinkingTime, use it
       if (message.thinkingTime !== undefined) {
         setReasoningSeconds(message.thinkingTime);
       }
@@ -69,14 +98,31 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onEditUserMessage, o
     };
   }, [message.isThinking, message.thinkingTime]);
 
+  const handleCitationJump = (citationId: number) => {
+    if (!message.citations || message.citations.length === 0) {
+      return;
+    }
+    onOpenCitations?.({ message, activeCitationId: citationId });
+  };
+
+  const contentWithCitationLinks = message.citations?.length
+    ? message.content.replace(/\[来源(\d+)\]/g, (_match, citationIdText: string) => {
+        const citationId = Number.parseInt(citationIdText, 10);
+        const hasCitation = message.citations?.some((citation) => citation.id === citationId);
+        return hasCitation ? `[来源${citationId}](#citation-${citationId})` : `[来源${citationId}]`;
+      })
+    : message.content;
+
   const syncEditTextareaHeight = () => {
-    const el = editTextareaRef.current;
-    if (!el) return;
+    const element = editTextareaRef.current;
+    if (!element) {
+      return;
+    }
     const maxHeight = 180;
-    el.style.height = 'auto';
-    const nextHeight = Math.min(el.scrollHeight, maxHeight);
-    el.style.height = `${nextHeight}px`;
-    el.style.overflowY = el.scrollHeight > maxHeight ? 'auto' : 'hidden';
+    element.style.height = 'auto';
+    const nextHeight = Math.min(element.scrollHeight, maxHeight);
+    element.style.height = `${nextHeight}px`;
+    element.style.overflowY = element.scrollHeight > maxHeight ? 'auto' : 'hidden';
   };
 
   useEffect(() => {
@@ -113,38 +159,42 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onEditUserMessage, o
   };
 
   const sendEdit = () => {
-    const next = editValue.trim();
-    if (!next) return;
-    onEditUserMessage?.(message.id, next);
+    const nextValue = editValue.trim();
+    if (!nextValue) {
+      return;
+    }
+    onEditUserMessage?.(message.id, nextValue);
     setIsEditing(false);
   };
 
-  /** 自定义代码块组件，包含语言显示、复制和下载功能 */
   const CodeBlock = ({ children, className, ...props }: CodeProps & React.ComponentPropsWithoutRef<'code'>) => {
-    const [copied, setCopied] = useState(false);
+    const [isCodeCopied, setIsCodeCopied] = useState(false);
     const match = /language-(\w+)/.exec(className || '');
     const language = match ? match[1] : '';
     const code = String(children).replace(/\n$/, '');
 
-    const handleCopy = async () => {
+    const handleCopyCode = async () => {
       await navigator.clipboard.writeText(code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setIsCodeCopied(true);
+      window.setTimeout(() => setIsCodeCopied(false), 2000);
     };
 
-    const handleDownload = () => {
+    const handleDownloadCode = () => {
       const blob = new Blob([code], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `code-${Date.now()}.${language || 'txt'}`;
-      a.click();
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `code-${Date.now()}.${language || 'txt'}`;
+      anchor.click();
       URL.revokeObjectURL(url);
     };
 
-    // 如果没有 className，说明是行内代码
     if (!className) {
-      return <code className={className} {...props}>{children}</code>;
+      return (
+        <code className={className} {...props}>
+          {children}
+        </code>
+      );
     }
 
     return (
@@ -152,11 +202,11 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onEditUserMessage, o
         <div className={styles.codeBlockHeader}>
           <span className={styles.codeLanguage}>{language || 'code'}</span>
           <div className={styles.codeActions}>
-            <button className={styles.codeActionBtn} onClick={handleCopy}>
-              {copied ? <Check size={14} /> : <Copy size={14} />}
-              <span>{copied ? '已复制' : '复制'}</span>
+            <button className={styles.codeActionBtn} onClick={handleCopyCode}>
+              {isCodeCopied ? <Check size={14} /> : <Copy size={14} />}
+              <span>{isCodeCopied ? '已复制' : '复制'}</span>
             </button>
-            <button className={styles.codeActionBtn} onClick={handleDownload}>
+            <button className={styles.codeActionBtn} onClick={handleDownloadCode}>
               <Download size={14} />
               <span>下载</span>
             </button>
@@ -176,25 +226,27 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onEditUserMessage, o
       <div className={styles.contentWrapper}>
         {!isUser && (message.reasoning || message.isThinking) && (
           <div className={styles.reasoning}>
-            <div 
-              className={classNames(styles.reasoningHeader, { [styles.thinking]: message.isThinking })} 
+            <div
+              className={classNames(styles.reasoningHeader, { [styles.thinking]: message.isThinking })}
               onClick={() => setIsReasoningOpen(!isReasoningOpen)}
             >
               <div className={classNames(styles.brainIcon, { [styles.pulsing]: message.isThinking })}>
                 <Brain size={16} />
               </div>
               <span className={styles.reasoningText}>
-                {message.isThinking ? '正在思考' : (reasoningSeconds > 0 ? `已思考 （用时 ${reasoningSeconds} 秒）` : '已思考')}
+                {message.isThinking
+                  ? '正在思考'
+                  : reasoningSeconds > 0
+                    ? `已思考（用时 ${reasoningSeconds} 秒）`
+                    : '已思考'}
               </span>
               <div className={classNames(styles.chevron, { [styles.rotated]: !isReasoningOpen })}>
                 <ChevronDown size={14} />
               </div>
             </div>
-            
+
             {isReasoningOpen && message.reasoning && (
-              <div className={styles.reasoningContent}>
-                {message.reasoning}
-              </div>
+              <div className={styles.reasoningContent}>{message.reasoning}</div>
             )}
           </div>
         )}
@@ -206,8 +258,8 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onEditUserMessage, o
                 ref={editTextareaRef}
                 className={styles.editTextarea}
                 value={editValue}
-                onChange={(e) => {
-                  setEditValue(e.target.value);
+                onChange={(event) => {
+                  setEditValue(event.target.value);
                 }}
                 rows={1}
                 autoFocus
@@ -223,9 +275,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onEditUserMessage, o
             </div>
           ) : (
             <>
-              <div className={styles.userBubble}>
-                {message.content}
-              </div>
+              <div className={styles.userBubble}>{message.content}</div>
               <div className={styles.userActions}>
                 {copied && <span className={styles.copyTip}>复制成功</span>}
                 <button className={styles.userActionBtn} onClick={handleCopy} aria-label="复制">
@@ -239,15 +289,43 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onEditUserMessage, o
           )
         ) : (
           <div className={styles.messageContent}>
+            {message.searchStatus && (
+              <div className={styles.searchStatus}>{message.searchStatus}</div>
+            )}
             {message.content ? (
-              <ReactMarkdown 
-                remarkPlugins={[remarkGfm]} 
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
                 rehypePlugins={[rehypeHighlight]}
                 components={{
-                  code: CodeBlock
+                  a: ({ href, children, ...props }) => {
+                    if (href?.startsWith('#citation-')) {
+                      const matchedId = href.match(/#citation-(\d+)$/);
+                      const citationId = matchedId ? Number.parseInt(matchedId[1], 10) : NaN;
+                      return (
+                        <button
+                          type="button"
+                          className={styles.inlineCitationLink}
+                          onClick={() => {
+                            if (!Number.isNaN(citationId)) {
+                              handleCitationJump(citationId);
+                            }
+                          }}
+                        >
+                          {children}
+                        </button>
+                      );
+                    }
+
+                    return (
+                      <a href={href} {...props}>
+                        {children}
+                      </a>
+                    );
+                  },
+                  code: CodeBlock,
                 }}
               >
-                {message.content}
+                {contentWithCitationLinks}
               </ReactMarkdown>
             ) : (message.isLoading || (!message.isThinking && message.content.length === 0)) && (
               <TypingIndicator />
@@ -257,10 +335,8 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onEditUserMessage, o
 
         {!isUser && message.content.length > 0 && !message.isThinking && (
           <>
-            <p className={styles.disclaimer}>
-              本回答由 AI 生成，内容仅供参考，请仔细甄别。
-            </p>
-            
+            <p className={styles.disclaimer}>本回答由 AI 生成，内容仅供参考，请仔细甄别。</p>
+
             <div className={styles.actions}>
               <button className={styles.actionBtn} onClick={handleCopy} title="复制">
                 {copied ? <Check size={16} className={styles.activeIcon} /> : <Copy size={16} />}
@@ -268,19 +344,38 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onEditUserMessage, o
               <button className={styles.actionBtn} onClick={onRegenerate} title="重新生成">
                 <RotateCcw size={16} />
               </button>
-              <button 
-                className={classNames(styles.actionBtn, { [styles.active]: isLiked })} 
-                onClick={() => { setIsLiked(!isLiked); if (isDisliked) setIsDisliked(false); }} 
+              {message.citations && message.citations.length > 0 && (
+                <button
+                  className={styles.actionBtn}
+                  onClick={() => onOpenCitations?.({ message })}
+                  title="查看来源"
+                >
+                  <Search size={16} />
+                </button>
+              )}
+              <button
+                className={classNames(styles.actionBtn, { [styles.active]: isLiked })}
+                onClick={() => {
+                  setIsLiked(!isLiked);
+                  if (isDisliked) {
+                    setIsDisliked(false);
+                  }
+                }}
                 title="点赞"
               >
-                <ThumbsUp size={16} fill={isLiked ? "currentColor" : "none"} />
+                <ThumbsUp size={16} fill={isLiked ? 'currentColor' : 'none'} />
               </button>
-              <button 
-                className={classNames(styles.actionBtn, { [styles.active]: isDisliked })} 
-                onClick={() => { setIsDisliked(!isDisliked); if (isLiked) setIsLiked(false); }} 
-                title="踩"
+              <button
+                className={classNames(styles.actionBtn, { [styles.active]: isDisliked })}
+                onClick={() => {
+                  setIsDisliked(!isDisliked);
+                  if (isLiked) {
+                    setIsLiked(false);
+                  }
+                }}
+                title="点踩"
               >
-                <ThumbsDown size={16} fill={isDisliked ? "currentColor" : "none"} />
+                <ThumbsDown size={16} fill={isDisliked ? 'currentColor' : 'none'} />
               </button>
               <button className={styles.actionBtn} title="分享">
                 <Share2 size={16} />

@@ -46,6 +46,9 @@ DB_NAME=chat_platform
 JWT_SECRET=你的JWT密钥
 DEEPSEEK_API_KEY=你的DeepSeek密钥
 DEEPSEEK_BASE_URL=https://api.deepseek.com
+SEARCH_PROVIDER=tavily
+TAVILY_API_KEY=你的Tavily密钥
+SEARCH_FETCH_PAGE_CONTENT=false
 WECHAT_APPID=你的微信APPID
 WECHAT_SECRET=你的微信SECRET
 ```
@@ -54,6 +57,7 @@ WECHAT_SECRET=你的微信SECRET
 
 - `DB_PASSWORD` 和 `JWT_SECRET` 为必填，代码中已移除默认值。
 - 若未配置 `DEEPSEEK_API_KEY`，后端会返回本地兜底演示回复。
+- 若开启联网搜索，需额外配置 `SEARCH_PROVIDER=tavily` 以及 `TAVILY_API_KEY`。
 - 若未配置微信环境变量，二维码登录接口会返回错误提示，但手机号登录仍可使用。
 
 ## 启动步骤
