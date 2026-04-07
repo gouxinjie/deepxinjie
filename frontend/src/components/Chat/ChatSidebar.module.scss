@@ -1,0 +1,556 @@
+// 聊天侧边栏组件样式
+// 负责侧边栏的布局、Logo展示、会话历史列表及其交互（重命名、置顶、删除菜单等）
+
+@use "../../styles/variables.scss" as *;
+
+.sidebar {
+  @include flex(column, flex-start, stretch);
+  height: 100%;
+  width: 260px;
+  background-color: $color-bg-soft; // 调浅背景颜色
+  border-right: 1px solid $color-border-sidebar;
+  padding: 12px 0; // 左右内边距改为 0，让滚动条靠最右
+  box-sizing: border-box;
+  font-family: $font-family;
+  color: $color-text-main;
+  transition:
+    transform 0.3s ease,
+    width 0.3s ease;
+  z-index: 100;
+}
+
+// 头部区域：包含Logo和收起按钮
+.header {
+  @include flex(row, space-between, center);
+  margin-bottom: 24px;
+  padding: 0 6px 0 12px; // 头部需要恢复内边距
+}
+
+.logo {
+  @include flex(row, flex-start, center);
+  gap: 8px;
+  cursor: pointer;
+}
+
+.logoText {
+  font-size: $font-size-3xl;
+  font-weight: $font-weight-bold;
+  color: $color-primary;
+  letter-spacing: -0.5px;
+}
+
+.headerActions {
+  @include flex(row, flex-start, center);
+}
+
+// 收起按钮样式
+.collapseBtn {
+  @include flex-center;
+  width: 32px;
+  height: 32px;
+  border-radius: $radius-md;
+  background: transparent;
+  color: $color-text-secondary;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: $color-bg-hover;
+    color: $color-text-main;
+  }
+}
+
+.closeBtn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  color: $color-text-secondary;
+  cursor: pointer;
+}
+
+// “开启新对话”按钮：药丸形状设计
+.newChatBtn {
+  @include flex-center;
+  gap: 8px;
+  user-select: none;
+  border: 1px solid $color-new-chat-border;
+  border-radius: $radius-full;
+  outline: none;
+  flex-shrink: 0;
+  width: calc(100% - 24px); // 减去左右间距
+  margin: 0 12px; // 按钮左右间距
+  height: 44px;
+  padding: 0 16px;
+  font-size: $font-size-base;
+  font-weight: $font-weight-medium;
+  background-color: $color-new-chat-bg;
+  color: $color-text-main;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  box-shadow: $shadow-sm;
+
+  &:hover {
+    background-color: $color-new-chat-hover;
+    border-color: $color-border-light;
+    box-shadow: $shadow-md;
+  }
+
+  svg {
+    color: inherit;
+  }
+}
+
+// 会话历史列表容器
+.history {
+  flex: 1;
+  overflow-y: auto;
+  @include flex(column, flex-start, stretch);
+  gap: 6px;
+  padding: 0 8px 0 12px; // 右侧留出一点间隙给滚动条，左侧保持 12px
+  margin-top: 16px;
+
+  @include scrollbar;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: transparent;
+  }
+  &:hover::-webkit-scrollbar-thumb {
+    background: $color-border;
+  }
+}
+
+// 会话分组：按今天、7天内等
+.historyGroup {
+  @include flex(column, flex-start, stretch);
+  gap: 1px;
+}
+
+.historyLabel {
+  color: $color-text-secondary;
+  user-select: none;
+  margin-bottom: 2px;
+  padding: 6px 10px 0;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  line-height: 18px;
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+}
+
+.historyItemWrapper {
+  position: relative;
+  width: 100%;
+}
+
+// 单个会话项：包含标题和操作入口
+.historyItem {
+  @include flex(row, space-between, center);
+  padding: 9px 12px;
+  border-radius: $radius-lg;
+  font-size: $font-size-base;
+  color: $color-text-main;
+  cursor: pointer;
+  text-decoration: none !important; // 确保移除下划线
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: $color-bg-hover;
+    text-decoration: none !important; // 再次确保悬浮时没有下划线
+
+    .moreIcon {
+      opacity: 1;
+    }
+  }
+
+  // 选中态样式：背景 #e4edfd，文字 #3964fe
+  &.active {
+    background-color: $color-primary-light;
+    color: $color-primary;
+
+    .sessionTitle {
+      font-weight: $font-weight-medium;
+    }
+
+    .moreIcon {
+      opacity: 1;
+      color: $color-primary;
+    }
+  }
+}
+
+// 更多操作按钮图标容器
+.moreIconBtn {
+  @include flex-center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+
+  &:hover,
+  &.menuOpen {
+    background-color: $color-bg-hover;
+
+    .moreIcon {
+      opacity: 1;
+    }
+  }
+}
+
+// 下拉菜单样式：悬浮层
+.dropdownMenu {
+  position: absolute;
+  top: 40px;
+  right: 4px;
+  width: 140px;
+  background-color: $color-bg;
+  border-radius: $radius-xl;
+  padding: 6px;
+  box-shadow: $shadow-md;
+  z-index: 1000;
+  border: 1px solid $color-border-light;
+  animation: menuFadeIn 0.15s ease-out;
+}
+
+@keyframes menuFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// 菜单项样式
+.menuItem {
+  @include flex(row, flex-start, center);
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: $radius-md;
+  font-size: $font-size-base;
+  color: $color-text-main;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: $color-bg-hover;
+  }
+
+  svg {
+    color: $color-text-secondary;
+  }
+
+  // 删除操作特殊样式
+  &.delete {
+    color: $color-danger;
+
+    svg {
+      color: $color-danger;
+    }
+
+    &:hover {
+      background-color: $color-danger-bg;
+    }
+  }
+}
+
+// 自定义提示弹窗样式
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 20px;
+  border-radius: $radius-3xl;
+  background-color: $color-bg-dark;
+  color: $color-bg;
+  font-size: $font-size-base;
+  z-index: 2000;
+  box-shadow: $shadow-sm;
+  animation: toastIn 0.3s ease-out;
+
+  &.success {
+    background-color: $color-success;
+  }
+  &.error {
+    background-color: $color-danger;
+  }
+  &.info {
+    background-color: $color-info;
+  }
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    bottom: 0;
+  }
+  to {
+    opacity: 1;
+    bottom: 24px;
+  }
+}
+
+.sessionTitle {
+  flex: 1;
+  font-weight: $font-weight-medium;
+  @include text-ellipsis;
+  line-height: 1.4;
+}
+
+.itemActions {
+  @include flex(row, flex-start, center);
+  gap: 8px;
+}
+
+.actionIcon {
+  color: $color-text-tertiary;
+  @include flex-center;
+
+  &:hover {
+    color: $color-primary;
+  }
+}
+
+.moreIcon {
+  color: $color-text-tertiary;
+  opacity: 0;
+  transition:
+    opacity 0.2s,
+    color 0.2s;
+  @include flex(row, flex-start, center);
+}
+
+// 编辑状态输入框容器
+.editing {
+  background-color: $color-bg !important;
+  border: 1px solid $color-primary;
+  padding: 6px 10px;
+}
+
+.editInput {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: $font-size-base;
+  outline: none;
+  color: $color-text-main;
+}
+
+.editActions {
+  @include flex(row, flex-start, stretch);
+  gap: 8px;
+  color: $color-primary;
+
+  svg {
+    cursor: pointer;
+    &:hover {
+      opacity: 0.8;
+    }
+  }
+}
+
+// 底部区域：用户信息
+.footer {
+  margin-top: auto;
+  position: relative;
+  padding: 0 12px; // 底部也需要恢复内边距
+}
+
+.userProfile {
+  @include flex(row, flex-start, center);
+  gap: 12px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: $radius-xl;
+  transition: background-color 0.2s;
+  background-color: transparent;
+  
+  &:hover {
+    background-color: $color-bg-hover;
+  }
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  background-color: $color-border;
+  border-radius: 50%;
+  @include flex-center;
+  font-size: $font-size-base;
+  color: $color-text-secondary;
+  font-weight: $font-weight-medium;
+  overflow: hidden;
+  flex-shrink: 0;
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.username {
+  flex: 1;
+  font-size: $font-size-base;
+  font-weight: $font-weight-medium;
+  color: $color-text-main;
+  @include text-ellipsis;
+}
+
+.themeToggle {
+  @include flex-center;
+  width: 28px;
+  height: 28px;
+  border-radius: $radius-md;
+  color: $color-text-secondary;
+  transition: all 0.2s;
+  cursor: pointer;
+
+  &:hover {
+    background-color: $color-bg-hover;
+    color: $color-text-main;
+  }
+}
+
+// 用户菜单弹窗
+.userMenu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  width: 180px; // 修改宽度，比之前窄一些
+  background-color: $color-bg;
+  border-radius: $radius-2xl;
+  padding: 8px;
+  box-shadow: $shadow-md;
+  z-index: 1001;
+  border: 1px solid $color-border-light;
+  animation: userMenuFadeIn 0.2s ease-out;
+}
+
+@keyframes userMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.userMenuItem {
+  @include flex(row, flex-start, center);
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: $radius-lg;
+  font-size: $font-size-base;
+  color: $color-text-main;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: $color-bg-hover;
+  }
+
+  svg {
+    color: $color-text-secondary;
+  }
+
+  &.logout {
+    margin-top: 4px;
+    border-top: 1px solid $color-bg-hover;
+    padding-top: 14px;
+    border-radius: 0 0 $radius-lg $radius-lg;
+
+    &:hover {
+      background-color: $color-bg-hover;
+    }
+  }
+}
+
+.loginBtnWrapper {
+  padding: 8px 12px;
+}
+
+.loginBtn {
+  width: 100%;
+  @include flex-center;
+  padding: 10px;
+  background-color: $color-primary;
+  color: white;
+  border: none;
+  border-radius: $radius-lg;
+  font-size: $font-size-base;
+  font-weight: $font-weight-medium;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: $color-primary-hover;
+  }
+}
+
+.overlay {
+  display: none;
+}
+
+/* 移动端响应式布局 */
+@media (max-width: 750px) {
+  .collapseBtn {
+    display: none;
+  }
+
+  .closeBtn {
+    display: block;
+  }
+
+  .overlay {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: $color-overlay;
+    z-index: 99;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+
+    &.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+
+  .sidebar {
+    width: 280px;
+    height: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000; // 提高 z-index 确保在最上层
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background-color: $color-bg;
+    border-right: none;
+    border-radius: 0;
+    box-shadow: $shadow-lg;
+
+    &.open {
+      transform: translateX(0);
+    }
+  }
+
+  .dropdownMenu {
+    right: 12px;
+    width: 160px;
+  }
+}

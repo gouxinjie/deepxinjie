@@ -1,0 +1,39 @@
+@use '../../../styles/variables.scss' as *;
+
+.container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 0 24px; // 增加底部内边距，使其离输入框更远
+}
+
+.dot {
+  width: 6px; // 稍微增大一点
+  height: 6px;
+  border-radius: 50%;
+  background-color: $color-primary; // 使用主题色
+  animation: typing-animation 1s infinite ease-in-out both; // 缩短周期，让动画更活泼
+
+  &:nth-child(1) {
+    animation-delay: 0s;
+  }
+
+  &:nth-child(2) {
+    animation-delay: 0.15s; // 缩短延迟使动画衔接更紧凑
+  }
+
+  &:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+}
+
+@keyframes typing-animation {
+  0%, 100% {
+    transform: scale(0.7);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1.2); // 增大缩放比例使对比更强烈
+    opacity: 1;
+  }
+}

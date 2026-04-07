@@ -1,0 +1,79 @@
+import os
+from typing import Optional
+
+import jwt
+from fastapi import Header, HTTPException, status
+from jwt import ExpiredSignatureError, InvalidTokenError
+
+
+def get_required_env(name: str) -> str:
+    """
+    获取必填环境变量。
+
+    说明：
+    - 对密码、密钥这类敏感配置不允许提供默认值。
+    - 若缺失则在服务启动阶段直接失败，避免带着不安全配置运行。
+    """
+    value = os.getenv(name)
+    if not value:
+        raise RuntimeError(f"缺少必填环境变量：{name}")
+    return value
+
+
+JWT_SECRET = get_required_env("JWT_SECRET")
+JWT_ALGORITHM = "HS256"
+
+
+def get_current_user_id(authorization: Optional[str] = Header(default=None)) -> int:
+    """
+    从请求头中解析当前登录用户 ID。
+
+    参数：
+    - authorization: 请求头中的 Bearer Token。
+
+    返回：
+    - 当前登录用户的整数 ID。
+
+    异常：
+    - 当缺少 Token、Token 格式错误、已过期或无法解析时抛出 401。
+    """
+    if not authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="未登录或登录已过期",
+        )
+
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="无效的授权信息",
+        )
+
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except ExpiredSignatureError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="登录已过期，请重新登录",
+        ) from exc
+    except InvalidTokenError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="无效的登录凭证",
+        ) from exc
+
+    user_id = payload.get("user_id")
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="登录凭证缺少用户信息",
+        )
+
+    try:
+        return int(user_id)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="登录凭证中的用户信息无效",
+        ) from exc

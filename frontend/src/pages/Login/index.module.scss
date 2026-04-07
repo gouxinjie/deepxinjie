@@ -1,0 +1,292 @@
+@use "../../styles/variables.scss" as *;
+
+// 登录页面样式
+// 优化后的 DeepXinjie 风格登录页，强调极简、专业、科技感
+
+.container {
+  min-height: 100vh;
+  @include flex(column, center, center);
+  background-color: $color-bg;
+  padding: 20px;
+}
+
+.logoWrapper {
+  @include flex(row, flex-start, center);
+  gap: 8px; // 缩小间距
+  margin-bottom: 32px; // 进一步缩小顶部间距
+  cursor: pointer;
+
+  .logoText {
+    font-size: $font-size-4xl; // 进一步缩小字体
+    font-weight: $font-weight-bold;
+    color: $color-primary;
+    letter-spacing: -0.5px;
+  }
+}
+
+.loginBox {
+  width: 100%;
+  max-width: 800px; // 缩小容器宽度
+  background-color: $color-bg;
+  @include flex(column, flex-start, center);
+}
+
+.content {
+  @include flex(row, flex-start, center);
+  width: 100%;
+  gap: 0;
+}
+
+.left {
+  flex: 1;
+  padding: 0 40px 0 0; // 减小内边距
+  @include flex(column, flex-start, stretch);
+}
+
+.form {
+  @include flex(column, flex-start, stretch);
+  gap: 16px; // 减小表单项间距
+
+  .inputGroup {
+    @include flex(row, flex-start, center);
+    border: 1px solid $color-border;
+    border-radius: $radius-4xl; // 稍微减小圆角
+    padding: 0 20px;
+    height: 48px; // 减小高度
+    background-color: $color-bg;
+    transition: all 0.2s;
+
+    &:focus-within {
+      border-color: $color-primary;
+    }
+
+    .prefix {
+      font-size: $font-size-base;
+      color: $color-text-main;
+      margin-right: 12px;
+      padding-right: 12px;
+      border-right: 1px solid $color-border;
+    }
+
+    input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: $font-size-base; // 缩小字体
+      background: transparent;
+      color: $color-text-main;
+
+      &::placeholder {
+        color: $color-text-tertiary;
+      }
+    }
+
+    .sendCode {
+      font-size: $font-size-sm;
+      color: $color-primary;
+      cursor: pointer;
+      white-space: nowrap;
+      padding-left: 10px;
+      border-left: 1px solid $color-border;
+
+      &:hover {
+        opacity: 0.8;
+      }
+    }
+  }
+
+  .agreement {
+    font-size: $font-size-xs; // 缩小字体
+    color: $color-text-secondary;
+    line-height: 1.5;
+    margin: 4px 0;
+
+    a {
+      color: $color-text-main;
+      text-decoration: underline;
+      cursor: pointer;
+      font-weight: $font-weight-medium;
+    }
+  }
+
+  .errorMessage {
+    color: $color-danger;
+    font-size: $font-size-sm;
+  }
+
+  .submitBtn {
+    height: 48px; // 减小高度
+    background-color: $color-primary;
+    color: $color-bg;
+    border: none;
+    border-radius: $radius-4xl;
+    font-size: $font-size-md;
+    font-weight: $font-weight-medium;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    box-shadow: $shadow-primary;
+
+    &:hover {
+      background-color: $color-primary-hover;
+    }
+
+    &:disabled {
+      background-color: $color-primary-disabled;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+  }
+}
+
+.otherMethods {
+    margin-top: 24px;
+    @include flex(column, flex-start, center);
+    gap: 12px;
+  
+    .divider {
+      width: 40px;
+      height: 1px;
+      background-color: $color-border-light;
+    }
+  
+    .icons {
+      @include flex(row, flex-start, stretch);
+      gap: 20px;
+  
+      .iconBtn {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: 1px solid $color-border;
+        @include flex-center;
+        color: $color-text-main;
+        cursor: pointer;
+        transition: all 0.2s;
+  
+        &:hover {
+          border-color: $color-primary;
+          color: $color-primary;
+        }
+      }
+    }
+  }
+
+.dividerVertical {
+  width: 1px;
+  height: 220px; // 减小高度
+  background-color: $color-border-light;
+}
+
+.right {
+  flex: 1;
+  padding: 0 0 0 40px; // 减小内边距
+  @include flex-center;
+  flex-direction: column; // 因为 flex-center 是 row，这里覆盖一下方向
+}
+
+.qrCard {
+  background-color: $color-bg-soft;
+  border: 1px solid $color-border-light;
+  border-radius: $radius-xl;
+  padding: 24px; // 减小内边距
+  margin-bottom: 12px;
+  width: 200px; // 缩小宽度
+  height: 200px; // 缩小高度
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qrContainer {
+  background-color: $color-bg;
+  padding: 6px;
+  border-radius: $radius-md;
+  box-shadow: $shadow-xs;
+
+  .qrCode {
+    width: 120px; // 缩小二维码
+    height: 120px;
+    display: block;
+  }
+
+  .qrPlaceholder {
+    width: 120px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: $color-text-tertiary;
+    font-size: $font-size-sm;
+  }
+}
+
+.qrTip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: $color-text-main;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.footer {
+  margin-top: 40px; // 增加与表单的距离，但在移动端会调整
+  display: flex;
+  gap: 8px;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+
+  a {
+    cursor: pointer;
+    color: $color-text-tertiary;
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+// 响应式处理
+@media (max-width: 768px) {
+  .container {
+    padding: 30px 16px;
+    justify-content: flex-start; // 移动端向上靠
+  }
+
+  .logoWrapper {
+    margin-bottom: 30px;
+  }
+
+  .loginBox {
+    max-width: 100%;
+  }
+
+  .content {
+    @include flex(column, flex-start, stretch);
+  }
+
+  .left {
+    padding: 0;
+    width: 100%;
+    max-width: 320px; // 限制表单宽度
+    margin-bottom: 30px;
+  }
+
+  .right {
+    padding: 0;
+    width: 100%;
+  }
+
+  .dividerVertical {
+    display: none;
+  }
+
+  .footer {
+    margin-top: auto; // 推到底部
+    padding-top: 30px;
+  }
+}

@@ -1,0 +1,142 @@
+@use '../../styles/variables.scss' as *;
+
+.sessionAnchor {
+  position: fixed;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 120;
+  @include flex-center;
+  &:hover .sessionAnchorPanel {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+    pointer-events: auto;
+  }
+}
+
+.sessionAnchorRail {
+  width: 24px;
+  background-color: transparent;
+  @include flex(column, center, center);
+  gap: 16px;
+  padding: 16px 0;
+  cursor: pointer;
+}
+
+.sessionAnchorDot {
+  width: 10px;
+  height: 2px;
+  border-radius: $radius-full;
+  background-color: $color-border; // default light gray
+  border: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  padding: 0;
+
+  &:hover {
+    background-color: $color-text-tertiary;
+  }
+
+  &.active {
+    width: 14px;
+    height: 3px;
+    background-color: $color-primary; // blue
+  }
+
+  &.nearActive {
+    background-color: $color-text-secondary; // Darker gray for immediate neighbors
+  }
+
+  &.farActive {
+    background-color: $color-border; // Lighter gray for items further away
+  }
+}
+
+.sessionAnchorPanel {
+  position: absolute;
+  right: 100%; // 紧贴锚点区，消除间隙
+  top: 50%;
+  max-width: 240px; // 修改为最大宽度 240px
+  width: max-content; // 宽度由内容决定，但受 max-width 限制
+  background-color: $color-bg;
+  border: 1px solid $color-border-light; // 添加边框，包括上边框
+  border-radius: $radius-2xl;
+  box-shadow: $shadow-sm;
+  padding: 16px 20px;
+  opacity: 0;
+  transform: translateY(-50%) translateX(10px);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+  visibility: hidden;
+  @include flex(column, flex-start, stretch);
+  gap: 16px;
+  
+  // 使用伪元素扩大可 hover 区域，覆盖面板与右侧圆点之间的缝隙
+  &::after {
+    content: '';
+    position: absolute;
+    right: -24px; // 覆盖右侧缝隙和圆点区域
+    top: 0;
+    width: 24px;
+    height: 100%;
+  }
+}
+
+.sessionAnchor:hover .sessionAnchorPanel {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+  pointer-events: auto;
+}
+
+.sessionAnchorItem {
+  width: 100%;
+  @include flex(row, flex-end, center); // Right align text since mark is removed
+  gap: 12px;
+  border: none;
+  background: transparent;
+  text-align: right; // Right align text
+  cursor: pointer;
+  padding: 0;
+  font-size: $font-size-base;
+  line-height: 1.4;
+
+  &.active {
+    // handled by inner spans
+  }
+  
+  &:not(.active):hover {
+    .sessionAnchorText {
+      color: $color-text-main; // Hover darker color
+    }
+  }
+}
+
+.sessionAnchorText {
+  flex: 1;
+  max-width: 200px; // 留出一点边距，确保省略号能正常显示
+  @include text-ellipsis;
+  color: $color-text-tertiary; // default light gray
+  transition: color 0.2s ease;
+  text-align: right; // Ensure text is right aligned
+
+  &.activeText {
+    color: $color-primary; // blue
+    font-size: $font-size-base;
+  }
+
+  &.nearActiveText {
+    color: $color-text-secondary; // nearly black
+  }
+
+  &.farActiveText {
+    color: $color-text-tertiary; // medium gray
+  }
+}
+
+// 移动端适配
+@media (max-width: 750px) {
+  .sessionAnchor {
+    display: none;
+  }
+}

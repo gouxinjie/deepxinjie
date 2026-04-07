@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+mysql-connector-python
+openai
+python-dotenv
+requests
+pyjwt
+passlib[bcrypt]
+xmltodict

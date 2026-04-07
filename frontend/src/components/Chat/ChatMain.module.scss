@@ -1,0 +1,163 @@
+// 聊天主内容区域样式
+// 负责消息列表的滚动展示、欢迎界面、输入框布局及底部免责声明
+
+@use '../../styles/variables.scss' as *;
+
+.container {
+  @include flex(column, flex-start, stretch);
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  background-color: $color-bg;
+
+  &.welcomeMode {
+    background-color: $color-bg;
+  }
+}
+
+// 聊天区域：包含消息列表或欢迎界面
+.chatArea {
+  flex: 1;
+  overflow-y: auto;
+  @include flex(column, flex-start, stretch);
+  position: relative; // 确保内部绝对定位元素（如滚动按钮）相对于此容器定位
+  @include scrollbar;
+}
+
+// 欢迎页面居中内容
+.welcomeContent {
+  flex: 1;
+  @include flex(column, center, center);
+  padding: 20px;
+  margin-top: -80px; // 视觉修正，使其看起来更居中
+}
+
+// 加载状态容器
+.loadingWrapper {
+  flex: 1;
+  @include flex-center;
+  color: $color-text-tertiary;
+}
+
+.welcomeInput {
+  width: 100%;
+  max-width: 760px;
+  margin-top: 32px;
+}
+
+// 消息列表容器：居中展示，最大宽度 920px
+.messagesList {
+  width: 100%;
+  max-width: 920px;
+  margin: 0 auto;
+  @include flex(column, flex-start, stretch);
+  gap: 0;
+  padding: 40px 20px 200px; // 增加底部内边距，确保最后一条消息离输入框有足够空间
+}
+
+// 滚动到底部按钮
+.scrollDownButton {
+  position: absolute;
+  bottom: 180px; // 输入框上方
+  left: 50%;
+  transform: translateX(calc(460px - 60px)); // 460px 是 920px 的一半，60px 是偏移量
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: $color-bg;
+  border: 1px solid $color-border;
+  @include flex-center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  color: $color-text-secondary;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 100;
+  animation: fadeIn 0.3s ease;
+
+  &:hover {
+    background-color: $color-bg-soft;
+    color: $color-primary;
+    transform: translateX(calc(460px - 60px)) translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  }
+
+  &:active {
+    transform: translateX(calc(460px - 60px)) translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(calc(460px - 60px)) translateY(10px); }
+  to { opacity: 1; transform: translateX(calc(460px - 60px)) translateY(0); }
+}
+
+// 输入区域：固定在底部
+.inputArea {
+  width: 100%;
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 0 20px 0px;
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  background: linear-gradient(to top, $color-bg 40%, transparent); // 减弱渐变背景的高度
+}
+
+// 底部免责声明文本
+.disclaimer {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  text-align: center;
+  margin-top: 0;
+  letter-spacing: 0.1px;
+}
+
+// 移动端适配
+@media (max-width: 750px) {
+  .welcomeContent {
+    margin-top: -40px;
+    padding: 0 16px;
+  }
+
+  .scrollDownButton {
+    left: auto;
+    right: 20px;
+    bottom: 140px;
+    transform: none;
+
+    &:hover, &:active {
+      transform: translateY(-2px);
+    }
+  }
+
+  .welcomeInput {
+    max-width: 100%;
+    margin-top: 24px;
+  }
+
+  .anchorContainer {
+    display: none;
+  }
+
+  .messagesList {
+    padding: 0px 5px 160px; // 增加底部内边距以防被输入框遮挡
+    gap: 0;
+  }
+  
+  .inputArea {
+    width: 100%;
+    padding: 0 12px 5px; // 调整底部间距
+    max-width: 100%;
+    background: linear-gradient(to top, $color-bg 85%, transparent); // 调整渐变背景
+  }
+
+  .disclaimer {
+    font-size: $font-size-xs;
+    color: $color-text-tertiary;
+    margin-top: 4px;
+    padding: 0 10px;
+    margin-bottom: 0;
+  }
+}

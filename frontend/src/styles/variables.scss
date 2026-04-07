@@ -1,0 +1,285 @@
+// 通用 SCSS 变量和混合宏
+@use "sass:color";
+
+/**
+ * ==========================================
+ * 第一层：基础调色盘 (Base Palette)
+ * 定义项目中用到的所有原始颜色值
+ * ==========================================
+ */
+
+// 1.1 品牌色 (Brand Colors)
+$blue-50:  #eef3ff;
+$blue-100: #dbe5ff;
+$blue-200: #93c5fd;
+$blue-500: #4d6bfe; // 主题色
+$blue-600: #3b5bdb; // Hover
+$blue-700: #2b4cc4; // Active
+$blue-800: #334155; // Disabled
+
+// 1.2 中性色 (Neutral/Gray Colors)
+$white:    #ffffff;
+$black:    #000000;
+$gray-50:  #fbfbfb; // bg-soft
+$gray-100: #f9f9f9; // new-chat-hover
+$gray-200: #f5f5f5; // bg-hover
+$gray-300: #f0f0f0; // border-light
+$gray-400: #e5e5e5; // border / new-chat-border
+$gray-500: #cccccc; // shortcut-text
+$gray-600: #999999; // text-tertiary
+$gray-700: #666666; // text-secondary
+$gray-800: #333333; // bg-dark
+$gray-900: #1a1a1a; // text-main
+
+// 1.3 状态色 (Functional Colors)
+$red-50:   #fff1f0;
+$red-500:  #ff4d4f;
+$red-600:  #ff7875;
+$green-500: #4caf50;
+$green-600: #52c41a;
+$blue-info: #2196f3;
+$orange-500: #faad14;
+
+// 1.4 深色模式专用基础色 (Dark Mode Palette)
+$dark-950: #0a0a0a; // bg-dark
+$dark-900: #171717; // bg-main
+$dark-850: #212121; // bg-soft / input-bg
+$dark-800: #262626; // border-light
+$dark-700: #2f2f2f; // bg-hover / border / new-chat-bg
+$dark-600: #3f3f3f; // new-chat-hover
+$dark-text-1: #ececec; // text-main
+$dark-text-2: #9b9b9b; // text-secondary
+$dark-text-3: #676767; // text-tertiary / shortcut-text
+
+/**
+ * ==========================================
+ * 第二层：语义化 Token (Semantic Tokens)
+ * 根据功能定义 CSS 变量，支持主题切换
+ * ==========================================
+ */
+
+:root {
+  // 2.1 主色调 (Brand)
+  --color-primary:          #{$blue-500};
+  --color-primary-hover:    #{$blue-600};
+  --color-primary-active:   #{$blue-700};
+  --color-primary-disabled: #{$blue-200};
+  --color-primary-light:    #{$blue-50};
+
+  // 2.2 背景色 (Backgrounds)
+  --color-bg:               #{$white};
+  --color-bg-soft:          #{$gray-50};
+  --color-bg-hover:         #{$gray-200};
+  --color-bg-dark:          #{$gray-800};
+  --color-input-bg:         #{$white};
+  
+  // 2.3 功能组件颜色 (Components)
+  --color-new-chat-bg:      #{$white};
+  --color-new-chat-hover:   #{$gray-100};
+  --color-new-chat-border:  #{$gray-400};
+  --color-shortcut-text:    #{$gray-500};
+
+  // 2.4 文本颜色 (Typography)
+  --color-text-main:        #{$gray-900};
+  --color-text-secondary:   #{$gray-700};
+  --color-text-tertiary:    #{$gray-600};
+
+  // 2.5 边框和分割线 (Borders)
+  --color-border:           #{$gray-400};
+  --color-border-light:     #{$gray-300};
+  --color-border-sidebar:   rgba(0, 0, 0, 0.04);
+  --color-border-transparent: rgba(0, 0, 0, 0.1);
+
+  // 2.6 状态颜色 (States)
+  --color-danger:           #{$red-500};
+  --color-danger-hover:     #{$red-600};
+  --color-danger-bg:        #{$red-50};
+  --color-success:          #{$green-500};
+  --color-info:             #{$blue-info};
+  --color-warning:          #{$orange-500};
+
+  // 2.7 阴影和遮罩 (Shadows & Overlays)
+  --color-overlay:          rgba(0, 0, 0, 0.5);
+  --shadow-xs:              0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-sm:              0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-md:              0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-lg:              0 12px 32px rgba(0, 0, 0, 0.15);
+  --shadow-xl:              0 20px 48px rgba(0, 0, 0, 0.2);
+  --shadow-primary:         0 4px 12px rgba(77, 107, 254, 0.25);
+  --shadow-input:           0 8px 24px rgba(15, 23, 42, 0.06);
+  --shadow-input-focus:     0 10px 28px rgba(15, 23, 42, 0.09);
+
+  // 2.8 其他 (Radius, Sizes)
+  --radius-xs: 4px; --radius-sm: 6px; --radius-md: 8px; --radius-lg: 10px;
+  --radius-xl: 12px; --radius-2xl: 16px; --radius-3xl: 20px; --radius-4xl: 24px;
+  --radius-full: 9999px; --radius-round: 50%;
+
+  --font-size-xs: 11px; --font-size-sm: 12px; --font-size-base: 14px;
+  --font-size-md: 15px; --font-size-lg: 16px; --font-size-xl: 17px;
+  --font-size-2xl: 18px; --font-size-3xl: 20px; --font-size-4xl: 24px;
+  --font-size-5xl: 32px;
+
+  --font-weight-normal: 400; --font-weight-medium: 500;
+  --font-weight-semibold: 600; --font-weight-bold: 700;
+}
+
+// 2.9 深色模式 Token 覆盖 (Dark Theme Overrides)
+[data-theme='dark'] {
+  --color-primary:          #{$blue-500};
+  --color-primary-hover:    #{$blue-600};
+  --color-primary-active:   #{$blue-700};
+  --color-primary-disabled: #{$blue-800};
+  --color-primary-light:    rgba(77, 107, 254, 0.15);
+
+  --color-bg:               #{$dark-900};
+  --color-bg-soft:          #{$dark-900};
+  --color-bg-hover:         #{$dark-700};
+  --color-bg-dark:          #{$dark-850};
+  --color-input-bg:         #{$dark-850};
+  
+  --color-new-chat-bg:      #{$dark-700};
+  --color-new-chat-hover:   #{$dark-600};
+  --color-new-chat-border:  transparent;
+  --color-shortcut-text:    #{$dark-text-3};
+
+  --color-text-main:        #{$dark-text-1};
+  --color-text-secondary:   #{$dark-text-2};
+  --color-text-tertiary:    #{$dark-text-3};
+
+  --color-border:           #{$dark-700};
+  --color-border-light:     #{$dark-800};
+  --color-border-sidebar:   rgba(255, 255, 255, 0.08);
+  --color-border-transparent: rgba(255, 255, 255, 0.1);
+
+  --color-danger-bg:        rgba(255, 77, 79, 0.15);
+  --color-success:          #{$green-600};
+
+  --color-overlay:          rgba(0, 0, 0, 0.7);
+  --shadow-xs:              0 1px 2px rgba(0, 0, 0, 0.1);
+  --shadow-sm:              0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-md:              0 4px 16px rgba(0, 0, 0, 0.3);
+  --shadow-lg:              0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-xl:              0 12px 32px rgba(0, 0, 0, 0.5);
+  --shadow-primary:         0 4px 12px rgba(77, 107, 254, 0.3);
+  --shadow-input:           0 8px 24px rgba(0, 0, 0, 0.2);
+  --shadow-input-focus:     0 10px 28px rgba(0, 0, 0, 0.3);
+}
+
+/**
+ * ==========================================
+ * 第三层：SCSS 映射 (SCSS Mapping)
+ * 方便在组件中通过 $variable 直接引用
+ * ==========================================
+ */
+
+$color-primary:          var(--color-primary);
+$color-primary-hover:    var(--color-primary-hover);
+$color-primary-active:   var(--color-primary-active);
+$color-primary-disabled: var(--color-primary-disabled);
+$color-primary-light:    var(--color-primary-light);
+
+$color-bg:               var(--color-bg);
+$color-bg-soft:          var(--color-bg-soft);
+$color-bg-hover:         var(--color-bg-hover);
+$color-bg-dark:          var(--color-bg-dark);
+$color-input-bg:         var(--color-input-bg);
+$color-new-chat-bg:      var(--color-new-chat-bg);
+$color-new-chat-hover:   var(--color-new-chat-hover);
+$color-new-chat-border:  var(--color-new-chat-border);
+$color-shortcut-text:    var(--color-shortcut-text);
+
+$color-text-main:        var(--color-text-main);
+$color-text-secondary:   var(--color-text-secondary);
+$color-text-tertiary:    var(--color-text-tertiary);
+
+$color-border:           var(--color-border);
+$color-border-light:     var(--color-border-light);
+$color-border-sidebar:   var(--color-border-sidebar);
+$color-border-transparent: var(--color-border-transparent);
+
+$color-danger:           var(--color-danger);
+$color-danger-hover:     var(--color-danger-hover);
+$color-danger-bg:        var(--color-danger-bg);
+$color-success:          var(--color-success);
+$color-info:             var(--color-info);
+$color-warning:          var(--color-warning);
+
+$color-overlay:          var(--color-overlay);
+$shadow-xs:              var(--shadow-xs);
+$shadow-sm:              var(--shadow-sm);
+$shadow-md:              var(--shadow-md);
+$shadow-lg:              var(--shadow-lg);
+$shadow-xl:              var(--shadow-xl);
+$shadow-primary:         var(--shadow-primary);
+$shadow-input:           var(--shadow-input);
+$shadow-input-focus:     var(--shadow-input-focus);
+
+// 圆角
+$radius-xs: var(--radius-xs); $radius-sm: var(--radius-sm); $radius-md: var(--radius-md);
+$radius-lg: var(--radius-lg); $radius-xl: var(--radius-xl); $radius-2xl: var(--radius-2xl);
+$radius-3xl: var(--radius-3xl); $radius-4xl: var(--radius-4xl);
+$radius-full: var(--radius-full); $radius-round: var(--radius-round);
+
+// 字体大小
+$font-size-xs: var(--font-size-xs); $font-size-sm: var(--font-size-sm); $font-size-base: var(--font-size-base);
+$font-size-md: var(--font-size-md); $font-size-lg: var(--font-size-lg); $font-size-xl: var(--font-size-xl);
+$font-size-2xl: var(--font-size-2xl); $font-size-3xl: var(--font-size-3xl); $font-size-4xl: var(--font-size-4xl);
+$font-size-5xl: var(--font-size-5xl);
+
+// 字体权重
+$font-weight-normal: var(--font-weight-normal); $font-weight-medium: var(--font-weight-medium);
+$font-weight-semibold: var(--font-weight-semibold); $font-weight-bold: var(--font-weight-bold);
+
+// 间距
+$spacing-xs: 4px; $spacing-sm: 8px; $spacing-md: 16px; $spacing-lg: 24px; $spacing-xl: 32px;
+
+// 字体家族
+$font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+
+/**
+ * ==========================================
+ * 第四层：混合宏 (Mixins)
+ * ==========================================
+ */
+
+// 弹性布局
+@mixin flex($direction: row, $justify: flex-start, $align: stretch, $wrap: nowrap) {
+  display: flex;
+  flex-direction: $direction;
+  justify-content: $justify;
+  align-items: $align;
+  flex-wrap: $wrap;
+}
+
+// 居中弹性布局
+@mixin flex-center {
+  @include flex(row, center, center);
+}
+
+// 文本省略号
+@mixin text-ellipsis {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// 自定义滚动条
+@mixin scrollbar {
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: $color-border;
+    border-radius: $radius-sm;
+    
+    &:hover {
+      background: $color-text-tertiary;
+    }
+  }
+}

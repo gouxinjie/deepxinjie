@@ -1,0 +1,145 @@
+@use "../../styles/variables.scss" as *;
+
+.container {
+  @include flex(row, flex-start, stretch);
+  height: 100vh;
+  width: 100vw;
+  background-color: $color-bg;
+  overflow: hidden;
+}
+
+.sidebarWrapper {
+  height: 100%;
+  z-index: 20;
+  transition: width 0.3s ease;
+  width: 260px;
+  min-width: 0; /* Fix flex item not shrinking below content width */
+  flex-shrink: 0;
+  overflow: hidden;
+
+  &.hidden {
+    width: 0;
+    border: none;
+  }
+}
+
+.main {
+  flex: 1;
+  @include flex(column, flex-start, stretch);
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  background-color: $color-bg;
+  transition: padding 0.3s ease;
+}
+
+.content {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  @include flex(column, flex-start, stretch);
+}
+
+.mobileHeader {
+  height: 56px;
+  @include flex(row, space-between, center);
+  padding: 0 16px;
+  background-color: $color-bg;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.mobileActions {
+  @include flex(row, flex-start, center);
+  gap: 16px;
+}
+
+.iconBtn {
+  @include flex-center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  color: $color-text-main;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 0.7;
+  }
+}
+
+.floatingHeader {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 70;
+  @include flex(row, flex-start, center);
+  gap: 12px;
+}
+
+.logoIcon {
+  cursor: pointer;
+  @include flex-center;
+}
+
+.floatingActions {
+  background-color: $color-bg;
+  border: 1px solid $color-border;
+  padding: 3px 8px;
+  border-radius: $radius-full;
+  height: 40px;
+  margin-left: 8px;
+  @include flex(row, flex-start, center);
+  box-shadow: $shadow-sm;
+}
+
+.expandBtn,
+.newChatBtn {
+  @include flex-center;
+  width: 28px;
+  height: 28px;
+  border-radius: $radius-sm;
+  color: $color-text-secondary;
+
+  &:hover {
+    background-color: $color-bg-hover;
+    color: $color-text-main;
+  }
+}
+
+/* 移动端样式适配 */
+@media (max-width: 750px) {
+  .sidebarWrapper {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 0;
+    z-index: 1000;
+    pointer-events: none; // 确保不拦截点击
+
+    & > * {
+      pointer-events: auto; // 恢复内部元素的点击
+    }
+
+    &:not(.hidden) {
+      width: 0; // 移动端不再通过 sidebarWrapper 控制宽度
+    }
+  }
+
+  .main {
+    width: 100%;
+  }
+
+  .mobileHeader {
+    @include flex(row, space-between, center);
+  }
+
+  .floatingHeader {
+    left: 12px;
+    top: 12px;
+  }
+}

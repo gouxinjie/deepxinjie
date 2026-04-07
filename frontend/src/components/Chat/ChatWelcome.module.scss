@@ -1,0 +1,35 @@
+@use "../../styles/variables.scss" as *;
+
+.container {
+  @include flex(column, center, center);
+  width: 100%;
+}
+
+.logoTitle {
+  @include flex(row, flex-start, center);
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.title {
+  font-size: $font-size-5xl;
+  font-weight: $font-weight-semibold;
+  color: $color-text-main;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+@media (max-width: 750px) {
+  .logoTitle {
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .title {
+    font-size: $font-size-4xl;
+    text-align: center;
+    padding: 0 20px;
+    line-height: 1.4;
+  }
+}
