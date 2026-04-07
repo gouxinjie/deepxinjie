@@ -5,7 +5,7 @@
  * @created 2026-03-16
  * @updated 2026-04-07
  */
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDown } from 'lucide-react';
 import classNames from 'classnames';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -63,9 +63,14 @@ const ChatMain: React.FC<ChatMainProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatAreaRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const shouldScrollInstant = useRef(false);
   const isStartingNewChat = useRef(false);
   const streamControllerRef = useRef<AbortController | null>(null);
+  const autoScrollEnabledRef = useRef(true);
+  const isStreamingRef = useRef(false);
+  const isProgrammaticScrollRef = useRef(false);
+  const scrollFrameRef = useRef<number | null>(null);
+  const shouldScrollToBottomRef = useRef(false);
+  const touchStartYRef = useRef<number | null>(null);
 
   /**
    * 基于用户消息生成锚点目录。
@@ -88,26 +93,67 @@ const ChatMain: React.FC<ChatMainProps> = ({
    * 滚动到底部。
    * @param behavior - 滚动行为
    */
-  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
-    messagesEndRef.current?.scrollIntoView({ behavior });
+  const isNearBottom = (element: HTMLDivElement, threshold = 24): boolean => {
+    return element.scrollHeight - element.scrollTop - element.clientHeight <= threshold;
+  };
+
+  const cancelScheduledScroll = () => {
+    if (scrollFrameRef.current !== null) {
+      window.cancelAnimationFrame(scrollFrameRef.current);
+      scrollFrameRef.current = null;
+    }
+  };
+
+  const scheduleScrollToBottom = (behavior: ScrollBehavior = 'auto') => {
+    const element = chatAreaRef.current;
+    if (!element) {
+      return;
+    }
+
+    cancelScheduledScroll();
+
+    scrollFrameRef.current = window.requestAnimationFrame(() => {
+      scrollFrameRef.current = null;
+      isProgrammaticScrollRef.current = true;
+      element.scrollTo({
+        top: element.scrollHeight,
+        behavior,
+      });
+
+      window.requestAnimationFrame(() => {
+        isProgrammaticScrollRef.current = false;
+      });
+    });
   };
 
   /**
    * 处理滚动事件，控制“回到底部”按钮及锚点高亮。
    */
   const handleScroll = () => {
-    if (!chatAreaRef.current) {
+    const chatElement = chatAreaRef.current;
+    if (!chatElement) {
       return;
     }
 
-    const { scrollTop, scrollHeight, clientHeight } = chatAreaRef.current;
-    setShowScrollButton(scrollHeight - scrollTop - clientHeight > 100);
+    const nearBottom = isNearBottom(chatElement, 40);
+    setShowScrollButton(!nearBottom);
+
+    if (!isProgrammaticScrollRef.current) {
+      if (nearBottom) {
+        if (isStreamingRef.current) {
+          autoScrollEnabledRef.current = true;
+        }
+      } else {
+        autoScrollEnabledRef.current = false;
+        cancelScheduledScroll();
+      }
+    }
 
     if (anchorItems.length === 0) {
       return;
     }
 
-    const containerTop = chatAreaRef.current.getBoundingClientRect().top;
+    const containerTop = chatElement.getBoundingClientRect().top;
     let currentAnchor = anchorItems[0].id;
 
     for (const anchor of anchorItems) {
@@ -225,7 +271,8 @@ const ChatMain: React.FC<ChatMainProps> = ({
     try {
       const response = await sessionApi.getMessages(id);
       if (response.data.success) {
-        shouldScrollInstant.current = true;
+        shouldScrollToBottomRef.current = true;
+        autoScrollEnabledRef.current = true;
         setMessages(formatMessages(response.data.data.messages));
         setCitationPanelState(null);
         setIsCitationPanelVisible(false);
@@ -330,6 +377,9 @@ const ChatMain: React.FC<ChatMainProps> = ({
     streamControllerRef.current?.abort();
     streamControllerRef.current = controller;
     setRequestError('');
+    isStreamingRef.current = true;
+    autoScrollEnabledRef.current = true;
+    shouldScrollToBottomRef.current = true;
 
     setMessages((prev) => options.buildNextMessages(prev, aiMessageId));
 
@@ -358,6 +408,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
       finishStreamingMessage(aiMessageId, `请求失败：${errorMessage}`);
     } finally {
       if (streamControllerRef.current === controller) {
+        isStreamingRef.current = false;
         streamControllerRef.current = null;
       }
     }
@@ -400,7 +451,8 @@ const ChatMain: React.FC<ChatMainProps> = ({
       return;
     }
 
-    shouldScrollInstant.current = true;
+    shouldScrollToBottomRef.current = true;
+    autoScrollEnabledRef.current = true;
     const userMessage: Message = {
       id: crypto.randomUUID(),
       role: 'user',
@@ -445,7 +497,8 @@ const ChatMain: React.FC<ChatMainProps> = ({
       return;
     }
 
-    shouldScrollInstant.current = true;
+    shouldScrollToBottomRef.current = true;
+    autoScrollEnabledRef.current = true;
     setMessages((prev) => prev.slice(0, targetIndex));
 
     void startStream({
@@ -508,23 +561,26 @@ const ChatMain: React.FC<ChatMainProps> = ({
    */
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      streamControllerRef.current?.abort();
-
       if (sessionId) {
         if (isStartingNewChat.current) {
           isStartingNewChat.current = false;
           return;
         }
 
+        streamControllerRef.current?.abort();
         void loadMessages(Number.parseInt(sessionId, 10));
         return;
       }
 
+      streamControllerRef.current?.abort();
       setRequestError('');
       setMessages([]);
       setIsLoading(false);
       setCitationPanelState(null);
       setIsCitationPanelVisible(false);
+      isStreamingRef.current = false;
+      autoScrollEnabledRef.current = true;
+      shouldScrollToBottomRef.current = false;
       isStartingNewChat.current = false;
     }, 0);
 
@@ -534,22 +590,87 @@ const ChatMain: React.FC<ChatMainProps> = ({
   /**
    * 消息变化后自动滚动到底部。
    */
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (messages.length === 0) {
       return;
     }
 
-    const behavior = shouldScrollInstant.current ? 'auto' : 'smooth';
-    scrollToBottom(behavior);
-    shouldScrollInstant.current = false;
+    if (shouldScrollToBottomRef.current) {
+      scheduleScrollToBottom('auto');
+      shouldScrollToBottomRef.current = false;
+      return;
+    }
+
+    if (isStreamingRef.current && autoScrollEnabledRef.current) {
+      scheduleScrollToBottom('auto');
+    }
   }, [messages]);
 
   /**
    * 组件卸载时中断仍在进行中的流式请求。
    */
   useEffect(() => {
+    const element = chatAreaRef.current;
+    if (!element) {
+      return undefined;
+    }
+
+    const stopAutoScrollByUser = () => {
+      autoScrollEnabledRef.current = false;
+      cancelScheduledScroll();
+    };
+
+    const handleWheel = (event: WheelEvent) => {
+      if (!isStreamingRef.current) {
+        return;
+      }
+
+      if (event.deltaY < 0) {
+        stopAutoScrollByUser();
+      }
+    };
+
+    const handleTouchStart = (event: TouchEvent) => {
+      touchStartYRef.current = event.touches[0]?.clientY ?? null;
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      if (!isStreamingRef.current) {
+        return;
+      }
+
+      const currentY = event.touches[0]?.clientY;
+      const startY = touchStartYRef.current;
+      if (typeof currentY !== 'number' || typeof startY !== 'number') {
+        return;
+      }
+
+      if (currentY > startY) {
+        stopAutoScrollByUser();
+      }
+    };
+
+    const handleTouchEnd = () => {
+      touchStartYRef.current = null;
+    };
+
+    element.addEventListener('wheel', handleWheel, { passive: true });
+    element.addEventListener('touchstart', handleTouchStart, { passive: true });
+    element.addEventListener('touchmove', handleTouchMove, { passive: true });
+    element.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      element.removeEventListener('wheel', handleWheel);
+      element.removeEventListener('touchstart', handleTouchStart);
+      element.removeEventListener('touchmove', handleTouchMove);
+      element.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, []);
+
+  useEffect(() => {
     return () => {
       streamControllerRef.current?.abort();
+      cancelScheduledScroll();
     };
   }, []);
 
@@ -607,7 +728,10 @@ const ChatMain: React.FC<ChatMainProps> = ({
       {messages.length > 0 && showScrollButton && (
         <button
           className={styles.scrollDownButton}
-          onClick={() => scrollToBottom('smooth')}
+          onClick={() => {
+            autoScrollEnabledRef.current = true;
+            scheduleScrollToBottom('smooth');
+          }}
           title="滚动到底部"
         >
           <ArrowDown size={18} />
