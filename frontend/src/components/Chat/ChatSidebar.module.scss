@@ -28,7 +28,7 @@
 
 .logo {
   @include flex(row, flex-start, center);
-  gap: 8px;
+  gap: 6px;
   cursor: pointer;
 }
 
