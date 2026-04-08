@@ -1,30 +1,38 @@
 /**
- * @component 聊天输入框组件
- * @description 处理用户输入、深度思考/智能搜索切换及消息发送
+ * @component ChatInput
+ * @description 处理用户输入、深度思考与联网搜索切换，以及消息发送交互
  * @author gouxinjie
  * @created 2026-03-16
- * @updated 2026-03-17
+ * @updated 2026-04-08
  */
-import React, { useState, useRef, useEffect } from "react";
-import styles from "./ChatInput.module.scss";
-import { Paperclip, ArrowUp, Globe, Brain } from "lucide-react";
-import classNames from "classnames";
-import useMobile from "../../hooks/useMobile";
+import React, { useEffect, useRef, useState } from 'react';
+import { ArrowUp, Brain, Globe, Paperclip } from 'lucide-react';
+import classNames from 'classnames';
+
+import styles from './ChatInput.module.scss';
+import useMobile from '../../hooks/useMobile';
 
 interface ChatInputProps {
   /** 发送消息回调 */
   onSend: (message: string, isDeepThink: boolean, isSearch: boolean) => void;
   /** 初始深度思考状态 */
   initialDeepThink?: boolean;
-  /** 初始智能搜索状态 */
+  /** 初始联网搜索状态 */
   initialSearch?: boolean;
-  /** 状态改变回调 */
+  /** 深度思考状态切换回调 */
   onToggleDeepThink?: (val: boolean) => void;
-  /** 状态改变回调 */
+  /** 联网搜索状态切换回调 */
   onToggleSearch?: (val: boolean) => void;
   /** 是否自动聚焦 */
   autoFocus?: boolean;
 }
+
+type ToastState = {
+  /** 提示文案 */
+  message: string;
+  /** 提示类型 */
+  type: 'info' | 'success' | 'error';
+};
 
 const ChatInput: React.FC<ChatInputProps> = ({
   onSend,
@@ -32,31 +40,42 @@ const ChatInput: React.FC<ChatInputProps> = ({
   initialSearch = false,
   onToggleDeepThink,
   onToggleSearch,
-  autoFocus = false
+  autoFocus = false,
 }) => {
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState('');
   const [isDeepThink, setIsDeepThink] = useState(initialDeepThink);
   const [isSearch, setIsSearch] = useState(initialSearch);
-  const [toast, setToast] = useState<{ message: string; type: "info" | "success" | "error" } | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
   const isMobile = useMobile();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // 3秒后自动关闭提示弹窗
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(null), 3000);
-      return () => clearTimeout(timer);
+  /**
+   * 同步输入框高度，确保桌面端与移动端切换时行数立即生效。
+   */
+  const syncTextareaHeight = () => {
+    if (!textareaRef.current) {
+      return;
     }
+
+    textareaRef.current.style.height = 'auto';
+    textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+  };
+
+  useEffect(() => {
+    if (!toast) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => setToast(null), 3000);
+    return () => window.clearTimeout(timer);
   }, [toast]);
 
-  // 自动聚焦
   useEffect(() => {
     if (autoFocus && textareaRef.current) {
       textareaRef.current.focus();
     }
   }, [autoFocus]);
 
-  // 同步外部状态变化
   useEffect(() => {
     setIsDeepThink(initialDeepThink);
   }, [initialDeepThink]);
@@ -65,44 +84,64 @@ const ChatInput: React.FC<ChatInputProps> = ({
     setIsSearch(initialSearch);
   }, [initialSearch]);
 
-  /** 处理发送逻辑 */
+  useEffect(() => {
+    syncTextareaHeight();
+  }, [message]);
+
+  useEffect(() => {
+    const rafId = window.requestAnimationFrame(() => {
+      syncTextareaHeight();
+    });
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [isMobile]);
+
+  /**
+   * 处理发送逻辑。
+   */
   const handleSend = () => {
-    if (message.trim()) {
-      onSend(message, isDeepThink, isSearch);
-      setMessage("");
-      // 发送后重置高度
-      if (textareaRef.current) {
-        textareaRef.current.style.height = "auto";
-      }
+    const nextMessage = message.trim();
+    if (!nextMessage) {
+      return;
+    }
+
+    onSend(nextMessage, isDeepThink, isSearch);
+    setMessage('');
+
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
     }
   };
 
-  /** 处理键盘快捷键 */
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
+  /**
+   * 处理快捷发送。
+   * @param event - 键盘事件
+   */
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
       handleSend();
     }
   };
 
-  /** 自动调整文本框高度 */
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-    }
-  }, [message]);
-
+  /**
+   * 切换深度思考开关。
+   */
   const toggleDeepThink = () => {
-    const newVal = !isDeepThink;
-    setIsDeepThink(newVal);
-    onToggleDeepThink?.(newVal);
+    const nextValue = !isDeepThink;
+    setIsDeepThink(nextValue);
+    onToggleDeepThink?.(nextValue);
   };
 
+  /**
+   * 切换联网搜索开关。
+   */
   const toggleSearch = () => {
-    const newVal = !isSearch;
-    setIsSearch(newVal);
-    onToggleSearch?.(newVal);
+    const nextValue = !isSearch;
+    setIsSearch(nextValue);
+    onToggleSearch?.(nextValue);
   };
 
   return (
@@ -113,7 +152,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
           className={styles.textarea}
           placeholder="给 DeepXinjie 发送消息"
           value={message}
-          onChange={(e) => setMessage(e.target.value)}
+          onChange={(event) => setMessage(event.target.value)}
           onKeyDown={handleKeyDown}
           rows={isMobile ? 1 : 2}
         />
@@ -121,39 +160,47 @@ const ChatInput: React.FC<ChatInputProps> = ({
         <div className={styles.controls}>
           <div className={styles.toggles}>
             <button
+              type="button"
               className={classNames(styles.toggleBtn, styles.deepThink, { [styles.active]: isDeepThink })}
               onClick={toggleDeepThink}
-              title="深度思考 (R1)"
+              title="深度思考"
             >
               <Brain size={16} strokeWidth={1.5} />
               <span>深度思考</span>
             </button>
-            <button className={classNames(styles.toggleBtn, styles.search, { [styles.active]: isSearch })} onClick={toggleSearch} title="智能搜索">
+            <button
+              type="button"
+              className={classNames(styles.toggleBtn, styles.search, { [styles.active]: isSearch })}
+              onClick={toggleSearch}
+              title="联网搜索"
+            >
               <Globe size={16} strokeWidth={1.5} />
-              <span>智能搜索</span>
+              <span>联网搜索</span>
             </button>
           </div>
 
           <div className={styles.actions}>
-            <button 
-              className={styles.attachBtn} 
+            <button
+              type="button"
+              className={styles.attachBtn}
               title="上传文件"
-              onClick={() => setToast({ message: "功能开发中", type: "info" })}
+              onClick={() => setToast({ message: '功能开发中', type: 'info' })}
             >
               <Paperclip size={20} strokeWidth={1.5} />
             </button>
             <button
+              type="button"
               className={classNames(styles.sendBtn, { [styles.hasContent]: message.trim() })}
               onClick={handleSend}
               disabled={!message.trim()}
-              title="发送"
+              title="发送消息"
             >
               <ArrowUp size={20} strokeWidth={2} />
             </button>
           </div>
         </div>
       </div>
-      
+
       {toast && <div className={classNames(styles.toast, styles[toast.type])}>{toast.message}</div>}
     </div>
   );

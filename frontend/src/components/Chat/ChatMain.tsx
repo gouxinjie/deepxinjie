@@ -33,7 +33,6 @@ interface ChatMainProps {
 
 interface CitationPanelState {
   /** 当前来源面板所属消息 ID */
-  messageId: string;
   /** 当前来源列表 */
   citations: Message['citations'];
   /** 当前来源状态提示 */
@@ -60,7 +59,6 @@ const ChatMain: React.FC<ChatMainProps> = ({
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatAreaRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const isStartingNewChat = useRef(false);
@@ -193,12 +191,10 @@ const ChatMain: React.FC<ChatMainProps> = ({
    */
   const handleOpenCitations = (payload: { message: Message; activeCitationId?: number }) => {
     setCitationPanelState({
-      messageId: payload.message.id,
       citations: payload.message.citations,
       searchStatus: payload.message.searchStatus,
       activeCitationId: payload.activeCitationId ?? null,
     });
-    setIsCitationPanelVisible(true);
   };
 
   /**
@@ -222,6 +218,23 @@ const ChatMain: React.FC<ChatMainProps> = ({
 
     return () => window.clearTimeout(timer);
   }, [citationPanelState, isCitationPanelVisible]);
+
+  /**
+   * 来源侧栏挂载后延迟一帧再显示，确保移动端底部弹层过渡动画生效。
+   */
+  useEffect(() => {
+    if (!citationPanelState) {
+      return undefined;
+    }
+
+    const rafId = window.requestAnimationFrame(() => {
+      setIsCitationPanelVisible(true);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [citationPanelState]);
 
   /**
    * 来源侧栏打开时支持通过 Esc 快捷关闭。
@@ -720,7 +733,6 @@ const ChatMain: React.FC<ChatMainProps> = ({
                 />
               </div>
             ))}
-            <div ref={messagesEndRef} />
           </div>
         )}
       </div>

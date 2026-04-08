@@ -1,26 +1,22 @@
 /**
  * 文件说明：聊天来源侧栏样式
- * 样式说明：定义右侧来源抽屉、来源列表项与滑入动效
- * 关键布局说明：桌面端使用绝对定位右侧抽屉，移动端转为底部弹层
+ * 样式说明：定义右侧来源抽屉、统一列表容器与来源条目层级
+ * 关键布局说明：桌面端使用右侧滑入面板，移动端切换为底部弹层
  */
 @use '../../styles/variables.scss' as *;
 
 .panel {
   position: absolute;
-  top: 20px;
-  right: 20px;
-  bottom: 20px;
-  width: 344px;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 368px;
   display: flex;
   flex-direction: column;
-  border-radius: $radius-3xl;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  background:
-    linear-gradient(180deg, rgba(77, 107, 254, 0.06) 0%, rgba(77, 107, 254, 0) 24%),
-    $color-bg;
-  box-shadow:
-    0 24px 48px rgba(15, 23, 42, 0.1),
-    0 6px 18px rgba(15, 23, 42, 0.06);
+  border-left: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 0;
+  background: $color-bg;
+  box-shadow: -10px 0 30px rgba(15, 23, 42, 0.04);
   transform: translateX(calc(100% + 24px));
   opacity: 0;
   pointer-events: none;
@@ -42,39 +38,40 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding: 18px 18px 14px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-  background: linear-gradient(180deg, rgba(77, 107, 254, 0.05) 0%, transparent 100%);
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  background: $color-bg;
 }
 
 .headerInfo {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 10px;
 }
 
 .headerIcon {
-  width: 32px;
-  height: 32px;
-  border-radius: $radius-round;
+  width: 30px;
+  height: 30px;
+  border-radius: 12px;
   @include flex-center;
-  background-color: rgba(77, 107, 254, 0.12);
-  color: $color-primary;
+  background-color: rgba(15, 23, 42, 0.05);
+  color: $color-text-secondary;
   flex-shrink: 0;
 }
 
 .title {
   margin: 0;
-  font-size: $font-size-lg;
+  font-size: $font-size-2xl;
+  line-height: 1.2;
   color: $color-text-main;
   font-weight: $font-weight-semibold;
 }
 
 .subtitle {
   margin: 4px 0 0;
-  font-size: $font-size-sm;
-  color: $color-text-secondary;
-  line-height: 1.5;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  line-height: 1.45;
 }
 
 .closeButton {
@@ -86,6 +83,9 @@
   background: transparent;
   color: $color-text-secondary;
   flex-shrink: 0;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 
   &:hover {
     background-color: $color-bg-hover;
@@ -95,82 +95,109 @@
 
 .body {
   flex: 1;
-  padding: 12px;
+  padding: 10px;
   overflow-y: auto;
   @include scrollbar;
+}
+
+.citationList {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
 .citationItem {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 11px 12px;
-  border-radius: $radius-xl;
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(249, 250, 251, 0.96) 100%);
+  gap: 10px;
+  padding: 15px 16px 13px;
   text-decoration: none;
   color: $color-text-main;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.04);
   transition:
-    transform 0.2s ease,
-    border-color 0.2s ease,
     background-color 0.2s ease,
-    box-shadow 0.2s ease;
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 
   &:hover {
-    transform: translateX(-2px);
-    border-color: rgba(77, 107, 254, 0.24);
-    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
+    background: rgba(15, 23, 42, 0.06);
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.04);
+    transform: translateY(-1px);
     text-decoration: none;
   }
 
   &.active {
-    border-color: rgba(77, 107, 254, 0.3);
-    background:
-      linear-gradient(135deg, rgba(77, 107, 254, 0.08) 0%, rgba(77, 107, 254, 0.02) 100%),
-      $color-bg-soft;
-    box-shadow:
-      0 0 0 1px rgba(77, 107, 254, 0.1),
-      0 12px 24px rgba(77, 107, 254, 0.08);
+    background: rgba(15, 23, 42, 0.07);
+    box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
   }
 }
 
-.citationMeta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  color: $color-text-secondary;
-}
-
-.citationIndex {
-  color: $color-primary;
-  font-size: $font-size-sm;
-  font-weight: $font-weight-semibold;
-}
-
 .citationTitle {
-  font-size: $font-size-sm;
-  line-height: 1.45;
+  font-size: 16px;
+  line-height: 1.42;
   color: $color-text-main;
   font-weight: $font-weight-semibold;
 }
 
-.citationDomain {
-  font-size: $font-size-xs;
-  color: $color-text-secondary;
-}
-
 .citationSnippet {
-  font-size: $font-size-xs;
+  font-size: 13px;
   color: $color-text-secondary;
-  line-height: 1.5;
+  line-height: 1.55;
   display: -webkit-box;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.citationFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 2px;
+}
+
+.citationSource {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sourceBadge {
+  width: 20px;
+  height: 20px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  @include flex-center;
+  background: linear-gradient(135deg, rgba(59, 91, 219, 0.92) 0%, rgba(77, 107, 254, 0.74) 100%);
+  color: $white;
+  font-size: 11px;
+  font-weight: $font-weight-bold;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+
+.citationDomain {
+  min-width: 0;
+  font-size: 12px;
+  color: $color-text-secondary;
+  @include text-ellipsis;
+}
+
+.citationIndex {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: $radius-full;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: rgba(255, 255, 255, 0.72);
+  color: $color-text-tertiary;
+  font-size: 10px;
+  font-weight: $font-weight-semibold;
+  line-height: 20px;
+  text-align: center;
+  flex-shrink: 0;
 }
 
 .emptyState {
@@ -187,10 +214,10 @@
 
 @media (max-width: 1100px) {
   .panel {
-    width: 332px;
-    right: 16px;
-    top: 16px;
-    bottom: 16px;
+    width: 340px;
+    right: 0;
+    top: 0;
+    bottom: 0;
   }
 }
 
@@ -201,7 +228,9 @@
     left: 0;
     bottom: 0;
     width: 100%;
-    height: min(76vh, 640px);
+    height: min(84vh, 760px);
+    border-left: none;
+    border-top: 1px solid rgba(15, 23, 42, 0.08);
     border-radius: $radius-3xl $radius-3xl 0 0;
     transform: translateY(calc(100% + 24px)) scale(0.98);
     transform-origin: center bottom;
@@ -216,5 +245,9 @@
 
   .body {
     padding: 12px 12px 16px;
+  }
+
+  .citationItem {
+    padding: 14px;
   }
 }

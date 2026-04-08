@@ -18,24 +18,24 @@
 
   &.panelOpen {
     .chatArea {
-      padding-right: 384px;
+      padding-right: 368px;
     }
 
     .inputArea {
-      width: min(920px, calc(100% - 420px));
-      transform: translateX(calc(-50% - 192px));
+      width: min(920px, calc(100% - 384px));
+      transform: translateX(calc(-50% - 184px));
     }
 
     .scrollDownButton {
-      z-index: 24;
-      transform: translateX(calc(460px - 252px));
+      z-index: 41;
+      transform: translateX(calc(460px - 248px));
 
       &:hover {
-        transform: translateX(calc(460px - 252px)) translateY(-2px);
+        transform: translateX(calc(460px - 248px)) translateY(-2px);
       }
 
       &:active {
-        transform: translateX(calc(460px - 252px)) translateY(0);
+        transform: translateX(calc(460px - 248px)) translateY(0);
       }
     }
   }
@@ -170,7 +170,7 @@
   .container.panelOpen {
     .chatArea {
       padding-right: 0;
-      padding-bottom: min(76vh, 640px);
+      padding-bottom: min(84vh, 760px);
     }
 
     .inputArea {

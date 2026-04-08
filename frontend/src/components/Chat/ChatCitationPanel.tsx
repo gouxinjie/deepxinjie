@@ -3,10 +3,10 @@
  * @description 聊天来源侧栏，负责展示联网搜索引用列表并支持右侧滑入展开
  * @author gouxinjie
  * @created 2026-04-07
- * @updated 2026-04-07
+ * @updated 2026-04-08
  */
 import React from 'react';
-import { ExternalLink, Search, X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import classNames from 'classnames';
 
 import styles from './ChatCitationPanel.module.scss';
@@ -24,6 +24,21 @@ interface ChatCitationPanelProps {
   /** 关闭侧栏回调 */
   onClose: () => void;
 }
+
+/**
+ * 提取来源站点首字母，用于生成简洁站点徽标。
+ * @param domain - 来源域名
+ * @returns 大写首字母，缺失时返回默认值
+ */
+const getSourceInitial = (domain: string): string => {
+  const normalizedDomain = domain.trim();
+
+  if (!normalizedDomain) {
+    return 'W';
+  }
+
+  return normalizedDomain.charAt(0).toUpperCase();
+};
 
 const ChatCitationPanel: React.FC<ChatCitationPanelProps> = ({
   visible,
@@ -43,9 +58,9 @@ const ChatCitationPanel: React.FC<ChatCitationPanelProps> = ({
             <Search size={16} strokeWidth={1.8} />
           </div>
           <div>
-            <h3 className={styles.title}>网页来源</h3>
+            <h3 className={styles.title}>参考资料</h3>
             <p className={styles.subtitle}>
-              {searchStatus || `共收录 ${citations.length} 条搜索结果`}
+              {searchStatus || `共收录 ${citations.length} 条联网结果`}
             </p>
           </div>
         </div>
@@ -61,26 +76,32 @@ const ChatCitationPanel: React.FC<ChatCitationPanelProps> = ({
 
       <div className={styles.body}>
         {citations.length > 0 ? (
-          citations.map((citation) => (
-            <a
-              key={citation.id}
-              className={classNames(styles.citationItem, {
-                [styles.active]: activeCitationId === citation.id,
-              })}
-              href={citation.url}
-              target="_blank"
-              rel="noreferrer"
-              title={citation.url}
-            >
-              <div className={styles.citationMeta}>
-                <span className={styles.citationIndex}>来源 {citation.id}</span>
-                <ExternalLink size={14} strokeWidth={1.8} />
-              </div>
-              <div className={styles.citationTitle}>{citation.title}</div>
-              <div className={styles.citationDomain}>{citation.domain}</div>
-              <div className={styles.citationSnippet}>{citation.snippet}</div>
-            </a>
-          ))
+          <div className={styles.citationList}>
+            {citations.map((citation) => (
+              <a
+                key={citation.id}
+                className={classNames(styles.citationItem, {
+                  [styles.active]: activeCitationId === citation.id,
+                })}
+                href={citation.url}
+                target="_blank"
+                rel="noreferrer"
+                title={citation.url}
+              >
+                <div className={styles.citationTitle}>{citation.title}</div>
+                <div className={styles.citationSnippet}>{citation.snippet}</div>
+                <div className={styles.citationFooter}>
+                  <div className={styles.citationSource}>
+                    <span className={styles.sourceBadge} aria-hidden="true">
+                      {getSourceInitial(citation.domain)}
+                    </span>
+                    <span className={styles.citationDomain}>{citation.domain}</span>
+                  </div>
+                  <span className={styles.citationIndex}>{citation.id}</span>
+                </div>
+              </a>
+            ))}
+          </div>
         ) : (
           <div className={styles.emptyState}>当前回答没有可展示的联网来源。</div>
         )}

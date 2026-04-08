@@ -3,7 +3,7 @@
  * @description 会话侧边栏，负责展示会话列表、重命名、删除、置顶和登录入口
  * @author gouxinjie
  * @created 2026-03-16
- * @updated 2026-04-07
+ * @updated 2026-04-08
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -42,9 +42,9 @@ import type { AuthUser, SessionItem } from '../../types/api';
 interface ChatSidebarProps {
   /** 移动端侧边栏是否展开 */
   isOpen: boolean;
-  /** 关闭回调 */
+  /** 关闭侧边栏 */
   onClose: () => void;
-  /** 桌面端折叠回调 */
+  /** 桌面端切换折叠 */
   onToggleCollapse: () => void;
 }
 
@@ -56,6 +56,59 @@ interface ToastState {
   /** 提示类型 */
   type: ToastType;
 }
+
+const AVATAR_GRADIENTS: readonly [string, string][] = [
+  ['#2563eb', '#60a5fa'],
+  ['#0891b2', '#22d3ee'],
+  ['#7c3aed', '#a78bfa'],
+  ['#ea580c', '#fb923c'],
+  ['#db2777', '#f472b6'],
+  ['#059669', '#34d399'],
+];
+
+/**
+ * 基于昵称生成稳定哈希，用于映射默认头像颜色。
+ * @param text - 输入文本
+ * @returns 稳定非负整数
+ */
+const getStableHash = (text: string): number => {
+  let hash = 0;
+
+  for (const char of text) {
+    hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  }
+
+  return hash;
+};
+
+/**
+ * 获取默认头像显示字符。
+ * @param nickname - 用户昵称
+ * @returns 默认头像字符
+ */
+const getAvatarInitial = (nickname: string): string => {
+  const normalizedName = nickname.trim();
+
+  if (!normalizedName) {
+    return '用';
+  }
+
+  return Array.from(normalizedName)[0]?.toUpperCase() || '用';
+};
+
+/**
+ * 获取默认头像渐变样式。
+ * @param nickname - 用户昵称
+ * @returns 头像背景样式
+ */
+const getAvatarStyle = (nickname: string): React.CSSProperties => {
+  const gradientIndex = getStableHash(nickname) % AVATAR_GRADIENTS.length;
+  const [startColor, endColor] = AVATAR_GRADIENTS[gradientIndex];
+
+  return {
+    background: `linear-gradient(135deg, ${startColor} 0%, ${endColor} 100%)`,
+  };
+};
 
 const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, onToggleCollapse }) => {
   const [sessions, setSessions] = useState<SessionItem[]>([]);
@@ -79,7 +132,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, onToggleColl
   const currentSessionId = pathParts[1] === 'chat' ? pathParts[2] : undefined;
 
   /**
-   * 显示侧边栏提示。
+   * 显示提示信息。
    * @param message - 提示文案
    * @param type - 提示类型
    */
@@ -104,9 +157,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, onToggleColl
     }
   }, []);
 
-  /**
-   * 自动关闭提示。
-   */
   useEffect(() => {
     if (!toast) {
       return undefined;
@@ -116,9 +166,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, onToggleColl
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  /**
-   * 点击菜单外部区域时自动关闭菜单。
-   */
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -134,9 +181,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, onToggleColl
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  /**
-   * 路由变化时刷新会话列表，确保新建会话立即可见。
-   */
   useEffect(() => {
     if (!user) {
       setSessions([]);
@@ -147,7 +191,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, onToggleColl
   }, [fetchSessions, location.pathname, user]);
 
   /**
-   * 新建会话并在移动端关闭侧边栏。
+   * 新建会话。
    */
   const handleNewChat = () => {
     navigate('/');
@@ -157,7 +201,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, onToggleColl
   };
 
   /**
-   * 执行会话重命名。
+   * 重命名会话。
    * @param id - 会话 ID
    */
   const handleRename = async (id: number) => {
@@ -227,7 +271,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, onToggleColl
   };
 
   /**
-   * 进入会话编辑态。
+   * 进入重命名状态。
    * @param session - 当前会话
    */
   const startEditing = (session: SessionItem) => {
@@ -237,7 +281,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, onToggleColl
   };
 
   /**
-   * 暂未实现的分享提示。
+   * 分享功能占位提示。
    */
   const handleShare = () => {
     setMenuOpenId(null);
@@ -286,6 +330,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, onToggleColl
 
   /**
    * 按更新时间分组会话。
+   * @returns 分组后的会话集合
    */
   const groupSessions = useCallback(() => {
     const pinned: SessionItem[] = [];
@@ -327,15 +372,41 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, onToggleColl
   const { pinned, today, last7Days, last30Days, older } = groupSessions();
 
   /**
+   * 渲染用户头像。
+   * @param currentUser - 当前登录用户
+   * @returns 头像节点
+   */
+  const renderAvatar = (currentUser: AuthUser) => {
+    if (currentUser.avatar) {
+      return (
+        <img
+          src={currentUser.avatar}
+          alt="avatar"
+        />
+      );
+    }
+
+    return (
+      <span
+        className={styles.avatarFallback}
+        style={getAvatarStyle(currentUser.nickname)}
+      >
+        {getAvatarInitial(currentUser.nickname)}
+      </span>
+    );
+  };
+
+  /**
    * 渲染单个会话项。
    * @param session - 会话数据
+   * @returns 会话节点
    */
   const renderSessionItem = (session: SessionItem) => {
     const isActive = currentSessionId === session.id.toString();
-    const isEditing = editingId === session.id;
+    const isEditingCurrent = editingId === session.id;
     const isMenuOpen = menuOpenId === session.id;
 
-    if (isEditing) {
+    if (isEditingCurrent) {
       return (
         <div className={classNames(styles.historyItem, styles.editing)} key={session.id}>
           <input
@@ -348,6 +419,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, onToggleColl
               if (event.key === 'Enter') {
                 void handleRename(session.id);
               }
+
               if (event.key === 'Escape') {
                 setEditingId(null);
               }
@@ -479,12 +551,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, onToggleColl
         <div className={styles.footer}>
           {user ? (
             <div className={styles.userProfile} onClick={() => setUserMenuOpen((prev) => !prev)}>
-              <div className={styles.avatar}>
-                <img
-                  src={user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.nickname}`}
-                  alt="avatar"
-                />
-              </div>
+              <div className={styles.avatar}>{renderAvatar(user)}</div>
               <span className={styles.username}>{user.nickname}</span>
               <div
                 className={styles.themeToggle}

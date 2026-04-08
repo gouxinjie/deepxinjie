@@ -290,7 +290,19 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
         ) : (
           <div className={styles.messageContent}>
             {message.searchStatus && (
-              <div className={styles.searchStatus}>{message.searchStatus}</div>
+              message.citations && message.citations.length > 0 ? (
+                <button
+                  type="button"
+                  className={styles.searchStatusButton}
+                  onClick={() => onOpenCitations?.({ message })}
+                  title="查看联网来源"
+                >
+                  <Search size={14} strokeWidth={2} />
+                  {message.searchStatus}
+                </button>
+              ) : (
+                <div className={styles.searchStatus}>{message.searchStatus}</div>
+              )
             )}
             {message.content ? (
               <ReactMarkdown
