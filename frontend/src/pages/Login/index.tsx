@@ -1,9 +1,9 @@
 /**
  * @component LoginPage
- * @description 登录页面，支持手机号登录和微信扫码登录
+ * @description 登录页面组件，负责处理手机号登录与微信扫码登录流程
  * @author gouxinjie
  * @created 2026-03-16
- * @updated 2026-04-07
+ * @updated 2026-04-08
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { Lock } from 'lucide-react';

@@ -1,3 +1,10 @@
+/**
+ * @component Layout
+ * @description 页面整体布局组件，负责侧边栏、移动端头部与主内容区域布局切换
+ * @author gouxinjie
+ * @created 2026-04-08
+ * @updated 2026-04-08
+ */
 import React from "react";
 import type { ReactNode } from "react";
 import styles from "./Layout.module.scss";

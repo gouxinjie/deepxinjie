@@ -1,8 +1,9 @@
 /**
- * @component TypingIndicator 正在输入指示器组件
- * @description 展示 AI 正在思考或准备回答时的三点加载动画。
+ * @component TypingIndicator
+ * @description 正在输入指示器组件，负责展示 AI 回复前的加载动效
  * @author gouxinjie
  * @created 2026-03-20
+ * @updated 2026-04-08
  */
 import React from 'react';
 import styles from './index.module.scss';

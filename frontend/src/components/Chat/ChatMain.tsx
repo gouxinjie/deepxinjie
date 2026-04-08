@@ -1,9 +1,9 @@
 /**
  * @component ChatMain
- * @description 聊天主内容区域，负责消息加载、发送、流式渲染、会话切换与来源侧栏联动
+ * @description 聊天主内容区域组件，负责消息加载、发送、流式渲染与来源侧栏联动
  * @author gouxinjie
  * @created 2026-03-16
- * @updated 2026-04-07
+ * @updated 2026-04-08
  */
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDown } from 'lucide-react';
@@ -16,7 +16,7 @@ import ChatCitationPanel from './ChatCitationPanel';
 import ChatInput from './ChatInput';
 import ChatMessage from './ChatMessage';
 import ChatWelcome from './ChatWelcome';
-import { extractApiErrorMessage, messageApi, sendChatStream, sessionApi } from '../../services/api';
+import { extractApiErrorMessage, sendChatStream, sessionApi } from '../../services/api';
 import type { Message } from '../../types/chat';
 import type { ChatStreamChunk, MessageRecord } from '../../types/api';
 
@@ -383,9 +383,12 @@ const ChatMain: React.FC<ChatMainProps> = ({
     isDeepThinkEnabled: boolean;
     isSearchEnabled: boolean;
     buildNextMessages: (prev: Message[], aiMessageId: string) => Message[];
+    onOpen?: () => void;
+    onRequestError?: () => void;
   }) => {
     const aiMessageId = crypto.randomUUID();
     const controller = new AbortController();
+    let hasOpened = false;
 
     streamControllerRef.current?.abort();
     streamControllerRef.current = controller;
@@ -404,6 +407,10 @@ const ChatMain: React.FC<ChatMainProps> = ({
           is_search: options.isSearchEnabled,
           session_id: options.sessionId,
         },
+        onOpen: () => {
+          hasOpened = true;
+          options.onOpen?.();
+        },
         signal: controller.signal,
         onChunk: (chunk) => {
           applyStreamChunk(aiMessageId, chunk);
@@ -413,11 +420,17 @@ const ChatMain: React.FC<ChatMainProps> = ({
       finishStreamingMessage(aiMessageId);
     } catch (error) {
       if (controller.signal.aborted) {
+        if (!hasOpened) {
+          options.onRequestError?.();
+        }
         return;
       }
 
       const errorMessage = extractApiErrorMessage(error);
       setRequestError(errorMessage);
+      if (!hasOpened) {
+        options.onRequestError?.();
+      }
       finishStreamingMessage(aiMessageId, `请求失败：${errorMessage}`);
     } finally {
       if (streamControllerRef.current === controller) {
@@ -437,7 +450,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
     content: string,
     isDeepThinkEnabled: boolean,
     isSearchEnabled: boolean,
-  ) => {
+  ): Promise<boolean> => {
     let currentSessionId = sessionId ? Number.parseInt(sessionId, 10) : undefined;
 
     if (!currentSessionId) {
@@ -447,7 +460,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
 
         if (!response.data.success) {
           setRequestError(response.data.message);
-          return;
+          return false;
         }
 
         currentSessionId = response.data.data.session_id;
@@ -455,13 +468,13 @@ const ChatMain: React.FC<ChatMainProps> = ({
         navigate(`/chat/${currentSessionId}`, { replace: true });
       } catch (error) {
         setRequestError(extractApiErrorMessage(error));
-        return;
+        return false;
       }
     }
 
     if (!currentSessionId) {
       setRequestError('创建会话失败');
-      return;
+      return false;
     }
 
     shouldScrollToBottomRef.current = true;
@@ -472,22 +485,39 @@ const ChatMain: React.FC<ChatMainProps> = ({
       content,
     };
 
-    void startStream({
-      content,
-      sessionId: currentSessionId,
-      isDeepThinkEnabled,
-      isSearchEnabled,
-      buildNextMessages: (prev, aiMessageId) => [
-        ...prev,
-        userMessage,
-        {
-          id: aiMessageId,
-          role: 'assistant',
-          content: '',
-          isThinking: isDeepThinkEnabled,
-          isLoading: true,
+    return new Promise<boolean>((resolve) => {
+      let isSettled = false;
+      const settle = (result: boolean) => {
+        if (isSettled) {
+          return;
+        }
+        isSettled = true;
+        resolve(result);
+      };
+
+      void startStream({
+        content,
+        sessionId: currentSessionId,
+        isDeepThinkEnabled,
+        isSearchEnabled,
+        buildNextMessages: (prev, aiMessageId) => [
+          ...prev,
+          userMessage,
+          {
+            id: aiMessageId,
+            role: 'assistant',
+            content: '',
+            isThinking: isDeepThinkEnabled,
+            isLoading: true,
+          },
+        ],
+        onOpen: () => {
+          settle(true);
         },
-      ],
+        onRequestError: () => {
+          settle(false);
+        },
+      });
     });
   };
 
@@ -533,24 +563,22 @@ const ChatMain: React.FC<ChatMainProps> = ({
   };
 
   /**
-   * 编辑用户消息内容。
-   * @param messageId - 消息 ID
-   * @param newContent - 新内容
+   * 将编辑后的内容作为一条新的用户消息追加发送。
+   * @param newContent - 编辑后的消息内容
+   * @returns 是否成功发起发送
    */
-  const handleEdit = async (messageId: string, newContent: string) => {
-    try {
-      const response = await messageApi.update(Number.parseInt(messageId, 10), newContent);
-      if (response.data.success) {
-        setMessages((prev) =>
-          prev.map((message) => (message.id === messageId ? { ...message, content: newContent } : message)),
-        );
-        return;
-      }
-
-      setRequestError(response.data.message);
-    } catch (error) {
-      setRequestError(extractApiErrorMessage(error));
+  const handleEditSend = async (newContent: string): Promise<boolean> => {
+    const nextContent = newContent.trim();
+    if (!nextContent) {
+      return false;
     }
+
+    if (isStreamingRef.current) {
+      setRequestError('当前回答生成中，请等待完成后再发送编辑后的内容');
+      return false;
+    }
+
+    return handleSend(nextContent, isDeepThink, isSearch);
   };
 
   /**
@@ -727,7 +755,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
               >
                 <ChatMessage
                   message={message}
-                  onEditUserMessage={handleEdit}
+                  onEditSendMessage={handleEditSend}
                   onRegenerate={() => handleRegenerate(message.id)}
                   onOpenCitations={handleOpenCitations}
                 />

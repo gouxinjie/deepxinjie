@@ -1,9 +1,9 @@
 /**
  * @component LoginModal
- * @description 微信扫码登录弹窗，负责拉取二维码、轮询状态并回写登录态
+ * @description 微信扫码登录弹窗组件，负责拉取二维码、轮询状态并回写登录态
  * @author gouxinjie
  * @created 2026-03-16
- * @updated 2026-04-07
+ * @updated 2026-04-08
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
@@ -15,7 +15,7 @@ import type { AuthUser } from '../../../types/api';
 interface LoginModalProps {
   /** 是否显示弹窗 */
   visible: boolean;
-  /** 关闭回调 */
+  /** 关闭弹窗回调 */
   onClose: () => void;
   /** 登录成功回调 */
   onSuccess: (user: AuthUser) => void;

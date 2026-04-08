@@ -1,7 +1,7 @@
 /**
  * @component DeepXinjieLogo
  * @description DeepXinjie 品牌 Logo 组件，使用几何化 SVG 呈现更稳定的产品识别符号
- * @author Codex
+ * @author gouxinjie
  * @created 2026-04-08
  * @updated 2026-04-08
  */

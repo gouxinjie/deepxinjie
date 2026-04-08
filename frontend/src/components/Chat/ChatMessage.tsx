@@ -1,9 +1,9 @@
 /**
  * @component ChatMessage
- * @description 聊天消息组件，负责渲染用户消息、模型回复、推理过程和引用跳转入口
+ * @description 聊天消息组件，负责渲染用户消息、模型回复、推理过程和引用入口
  * @author gouxinjie
  * @created 2026-03-16
- * @updated 2026-04-07
+ * @updated 2026-04-08
  */
 import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
@@ -32,8 +32,8 @@ import TypingIndicator from '../commons/TypingIndicator';
 interface ChatMessageProps {
   /** 当前消息 */
   message: Message;
-  /** 编辑用户消息回调 */
-  onEditUserMessage?: (messageId: string, newContent: string) => void;
+  /** 将编辑后的内容作为新消息发送的回调 */
+  onEditSendMessage?: (newContent: string) => Promise<boolean>;
   /** 重新生成回调 */
   onRegenerate?: () => void;
   /** 打开来源侧栏回调 */
@@ -51,7 +51,7 @@ interface CodeProps {
 
 const ChatMessage: React.FC<ChatMessageProps> = ({
   message,
-  onEditUserMessage,
+  onEditSendMessage,
   onRegenerate,
   onOpenCitations,
 }) => {
@@ -63,6 +63,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
   const [reasoningSeconds, setReasoningSeconds] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
   const [isDisliked, setIsDisliked] = useState(false);
+  const [isEditSending, setIsEditSending] = useState(false);
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
   const timerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
@@ -158,13 +159,21 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
     setEditValue(message.content);
   };
 
-  const sendEdit = () => {
+  const sendEdit = async () => {
     const nextValue = editValue.trim();
-    if (!nextValue) {
+    if (!nextValue || !onEditSendMessage || isEditSending) {
       return;
     }
-    onEditUserMessage?.(message.id, nextValue);
-    setIsEditing(false);
+
+    setIsEditSending(true);
+    try {
+      const success = await onEditSendMessage(nextValue);
+      if (success) {
+        setIsEditing(false);
+      }
+    } finally {
+      setIsEditSending(false);
+    }
   };
 
   const CodeBlock = ({ children, className, ...props }: CodeProps & React.ComponentPropsWithoutRef<'code'>) => {
@@ -265,11 +274,15 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
                 autoFocus
               />
               <div className={styles.editButtons}>
-                <button className={styles.editCancelBtn} onClick={cancelEdit}>
+                <button className={styles.editCancelBtn} onClick={cancelEdit} disabled={isEditSending}>
                   取消
                 </button>
-                <button className={styles.editSendBtn} onClick={sendEdit}>
-                  发送
+                <button
+                  className={styles.editSendBtn}
+                  onClick={() => void sendEdit()}
+                  disabled={isEditSending}
+                >
+                  {isEditSending ? '发送中...' : '发送'}
                 </button>
               </div>
             </div>

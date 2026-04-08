@@ -1,3 +1,10 @@
+/**
+ * @component ChatAnchor
+ * @description 会话锚点导航组件，负责根据用户消息生成快捷跳转目录
+ * @author gouxinjie
+ * @created 2026-04-08
+ * @updated 2026-04-08
+ */
 import React from "react";
 import classNames from "classnames";
 import styles from "./ChatAnchor.module.scss";

@@ -1,6 +1,6 @@
 /**
  * @component ChatSidebar
- * @description 会话侧边栏，负责展示会话列表、重命名、删除、置顶和登录入口
+ * @description 会话侧边栏组件，负责展示会话列表、重命名、删除、置顶和登录入口
  * @author gouxinjie
  * @created 2026-03-16
  * @updated 2026-04-08

@@ -186,6 +186,8 @@ interface SendChatStreamOptions {
   payload: SendMessagePayload;
   /** 分片回调 */
   onChunk: (chunk: ChatStreamChunk) => void;
+  /** 连接建立回调 */
+  onOpen?: () => void;
   /** 中断控制器信号 */
   signal?: AbortSignal;
 }
@@ -200,6 +202,7 @@ interface SendChatStreamOptions {
 export const sendChatStream = async ({
   payload,
   onChunk,
+  onOpen,
   signal,
 }: SendChatStreamOptions): Promise<void> => {
   const token = getAuthToken();
@@ -232,6 +235,8 @@ export const sendChatStream = async ({
   if (!response.body) {
     throw new Error('流式响应不可用');
   }
+
+  onOpen?.();
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();

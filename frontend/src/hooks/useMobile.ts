@@ -1,3 +1,10 @@
+/**
+ * @hook useMobile
+ * @description 响应式移动端检测 Hook，负责监听窗口宽度并返回是否为移动端
+ * @author gouxinjie
+ * @created 2026-04-08
+ * @updated 2026-04-08
+ */
 import { useState, useEffect } from 'react';
 
 /**

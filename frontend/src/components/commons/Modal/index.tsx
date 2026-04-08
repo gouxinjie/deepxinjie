@@ -1,9 +1,9 @@
 /**
- * @component Modal 确认框组件
- * @description 通用弹窗组件，用于确认操作（如删除）、提示等，支持自定义标题、内容及按钮。
+ * @component Modal
+ * @description 通用确认弹窗组件，负责展示标题、内容与确认取消操作
  * @author gouxinjie
  * @created 2026-03-16
- * @updated 2026-03-16
+ * @updated 2026-04-08
  */
 import React from 'react';
 import styles from './index.module.scss';

@@ -1,6 +1,6 @@
 /**
  * @component ChatCitationPanel
- * @description 聊天来源侧栏，负责展示联网搜索引用列表并支持右侧滑入展开
+ * @description 联网来源侧栏组件，负责展示搜索引用列表并支持高亮与跳转
  * @author gouxinjie
  * @created 2026-04-07
  * @updated 2026-04-08

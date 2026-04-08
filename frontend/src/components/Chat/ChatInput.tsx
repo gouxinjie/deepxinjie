@@ -1,6 +1,6 @@
 /**
  * @component ChatInput
- * @description 处理用户输入、深度思考与联网搜索切换，以及消息发送交互
+ * @description 聊天输入组件，负责处理用户输入、开关切换与消息发送
  * @author gouxinjie
  * @created 2026-03-16
  * @updated 2026-04-08
