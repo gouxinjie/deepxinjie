@@ -315,3 +315,7 @@ npm run build
 3. 启动后端
 4. 启动前端
 5. 打开 `http://127.0.0.1:5173`
+
+## 开源协议
+
+本项目采用 `MIT License` 开源，详情请见 [LICENSE](D:/MyProjects/deepxinjie/LICENSE)。
