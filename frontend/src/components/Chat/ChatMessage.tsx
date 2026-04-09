@@ -19,7 +19,6 @@ import {
   Pencil,
   RotateCcw,
   Search,
-  Share2,
   ThumbsDown,
   ThumbsUp,
 } from 'lucide-react';
@@ -401,9 +400,6 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
                 title="点踩"
               >
                 <ThumbsDown size={16} fill={isDisliked ? 'currentColor' : 'none'} />
-              </button>
-              <button className={styles.actionBtn} title="分享">
-                <Share2 size={16} />
               </button>
             </div>
           </>

@@ -8,7 +8,7 @@
 import React from "react";
 import type { ReactNode } from "react";
 import styles from "./Layout.module.scss";
-import { Menu, PanelLeftOpen, Plus, Share2, CirclePlus } from "lucide-react";
+import { Menu, PanelLeftOpen, Plus, CirclePlus } from "lucide-react";
 import classNames from "classnames";
 import DeepXinjieLogo from "../DeepXinjieLogo";
 import { useNavigate } from "react-router-dom";
@@ -35,9 +35,6 @@ const Layout: React.FC<LayoutProps> = ({ children, sidebar, onToggleSidebar, onT
       <div className={styles.mobileActions}>
         <button className={styles.iconBtn} onClick={() => navigate("/")}>
           <CirclePlus size={24} strokeWidth={1.5} />
-        </button>
-        <button className={styles.iconBtn}>
-          <Share2 size={24} strokeWidth={1.5} />
         </button>
       </div>
     </div>

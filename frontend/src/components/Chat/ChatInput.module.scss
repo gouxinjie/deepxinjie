@@ -64,38 +64,42 @@
 // 切换按钮组（深度思考、智能搜索）
 .toggles {
   @include flex(row, flex-start, stretch);
-  gap: 8px;
+  gap: 10px;
 }
 
 // 通用切换按钮样式
 .toggleBtn {
   @include flex(row, flex-start, center);
   gap: 6px;
-  padding: 7px 12px;
+  padding: 6px 14px;
+  min-height: 34px;
   border-radius: $radius-3xl;
-  border: 1px solid $color-border-transparent;
-  background-color: transparent;
-  color: $color-text-secondary;
-  font-size: $font-size-sm;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  background-color: rgba(15, 23, 42, 0.03);
+  color: $color-text-main;
+  font-size: 13px;
   font-weight: $font-weight-normal;
   cursor: pointer;
   transition: all 0.2s ease;
   user-select: none;
   
   &:hover {
-    background-color: $color-bg-hover;
-    border-color: $color-border;
+    background-color: rgba(15, 23, 42, 0.06);
+    border-color: rgba(15, 23, 42, 0.22);
   }
 
   svg {
-    color: $color-text-secondary;
+    color: $color-text-main;
+    width: 17px;
+    height: 17px;
   }
 
   // 深度思考和智能搜索统一的激活态样式（参考 UI 图）
   &.active {
     background-color: $color-primary-light !important;
-    border-color: $color-primary-light !important;
+    border-color: #b7c8fe !important;
     color: $color-primary !important;
+
     svg {
       color: $color-primary !important;
     }

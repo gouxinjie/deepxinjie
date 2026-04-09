@@ -17,7 +17,6 @@ import {
   PanelLeftClose,
   Pin,
   Settings,
-  Share,
   Sun,
   Trash2,
   X,
@@ -281,14 +280,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, onToggleColl
   };
 
   /**
-   * 分享功能占位提示。
-   */
-  const handleShare = () => {
-    setMenuOpenId(null);
-    showToast('分享功能开发中', 'info');
-  };
-
-  /**
    * 切换单个会话菜单显示状态。
    * @param event - 点击事件
    * @param id - 会话 ID
@@ -464,10 +455,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, onToggleColl
             <div className={styles.menuItem} onClick={() => void handlePin(session.id)}>
               <Pin size={16} />
               <span>{session.is_pinned ? '取消置顶' : '置顶'}</span>
-            </div>
-            <div className={styles.menuItem} onClick={handleShare}>
-              <Share size={16} />
-              <span>分享</span>
             </div>
             <div
               className={classNames(styles.menuItem, styles.delete)}
