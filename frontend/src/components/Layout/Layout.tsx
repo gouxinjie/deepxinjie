@@ -50,14 +50,14 @@ const Layout: React.FC<LayoutProps> = ({ children, sidebar, onToggleSidebar, onT
         {!isMobile && isCollapsed && (
           <div className={styles.floatingHeader}>
             <div className={styles.logoIcon} onClick={() => navigate("/")}>
-              <DeepXinjieLogo size={24} />
+              <DeepXinjieLogo size={28} />
             </div>
             <div className={styles.floatingActions}>
               <button className={styles.expandBtn} onClick={onToggleCollapse} title="展开侧边栏">
-                <PanelLeftOpen size={20} />
+                <PanelLeftOpen size={19} />
               </button>
               <button className={styles.newChatBtn} onClick={() => navigate("/")} title="开启新对话">
-                <Plus size={20} />
+                <Plus size={19} />
               </button>
             </div>
           </div>

@@ -88,7 +88,7 @@
 .floatingActions {
   background-color: $color-bg;
   border: 1px solid $color-border;
-  padding: 3px 8px;
+  padding: 3px 12px;
   border-radius: $radius-full;
   height: 40px;
   margin-left: 8px;
@@ -99,8 +99,6 @@
 .expandBtn,
 .newChatBtn {
   @include flex-center;
-  width: 28px;
-  height: 28px;
   border-radius: $radius-sm;
   color: $color-text-secondary;
 
