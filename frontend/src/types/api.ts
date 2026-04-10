@@ -46,6 +46,11 @@ export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
 export type MessageRole = 'user' | 'assistant';
 
 /**
+ * 消息生成状态。
+ */
+export type MessageStatus = 'streaming' | 'stopped' | 'completed' | 'failed';
+
+/**
  * 联网搜索引用信息。
  */
 export interface SearchCitation {
@@ -177,6 +182,8 @@ export interface MessageRecord {
   search_status?: string;
   /** 思考耗时 */
   thinking_time?: number;
+  /** 消息生成状态 */
+  status?: MessageStatus;
 }
 
 /**
@@ -207,12 +214,18 @@ export interface SendMessagePayload {
   is_search: boolean;
   /** 会话 ID */
   session_id: number;
+  /** 继续生成目标消息 ID */
+  continue_from_message_id?: number | null;
 }
 
 /**
  * 流式响应分片。
  */
 export interface ChatStreamChunk {
+  /** 当前助手消息 ID */
+  message_id?: number;
+  /** 当前消息状态 */
+  message_status?: MessageStatus;
   /** 回复正文分片 */
   content?: string;
   /** 推理分片 */

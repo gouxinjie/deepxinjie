@@ -412,6 +412,12 @@ export const messageApi = {
    */
   update: (messageId: number, content: string) =>
     api.put<ApiResponse<null>>(`/chat/messages/${messageId}`, { content }),
+
+  /**
+   * 停止指定助手消息生成。
+   * @param messageId - 消息 ID
+   */
+  stop: (messageId: number) => api.post<ApiResponse<null>>(`/chat/messages/${messageId}/stop`),
 };
 
 /**

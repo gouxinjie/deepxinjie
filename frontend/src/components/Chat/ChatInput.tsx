@@ -3,7 +3,7 @@
  * @description 聊天输入组件，负责处理用户输入、开关切换与消息发送
  * @author gouxinjie
  * @created 2026-03-16
- * @updated 2026-04-08
+ * @updated 2026-04-10
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowUp, Brain, Globe, Paperclip } from 'lucide-react';
@@ -15,6 +15,10 @@ import useMobile from '../../hooks/useMobile';
 interface ChatInputProps {
   /** 发送消息回调 */
   onSend: (message: string, isDeepThink: boolean, isSearch: boolean) => void;
+  /** 是否处于流式生成状态 */
+  isStreaming?: boolean;
+  /** 停止生成回调 */
+  onStop?: () => void;
   /** 初始深度思考状态 */
   initialDeepThink?: boolean;
   /** 初始联网搜索状态 */
@@ -36,6 +40,8 @@ type ToastState = {
 
 const ChatInput: React.FC<ChatInputProps> = ({
   onSend,
+  isStreaming = false,
+  onStop,
   initialDeepThink = false,
   initialSearch = false,
   onToggleDeepThink,
@@ -116,10 +122,26 @@ const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   /**
+   * 处理主操作按钮：非流式状态发送消息，流式状态停止生成。
+   */
+  const handlePrimaryAction = () => {
+    if (isStreaming) {
+      onStop?.();
+      return;
+    }
+
+    handleSend();
+  };
+
+  /**
    * 处理快捷发送。
    * @param event - 键盘事件
    */
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (isStreaming) {
+      return;
+    }
+
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       handleSend();
@@ -190,12 +212,15 @@ const ChatInput: React.FC<ChatInputProps> = ({
             </button>
             <button
               type="button"
-              className={classNames(styles.sendBtn, { [styles.hasContent]: message.trim() })}
-              onClick={handleSend}
-              disabled={!message.trim()}
-              title="发送消息"
+              className={classNames(styles.sendBtn, {
+                [styles.hasContent]: !isStreaming && Boolean(message.trim()),
+                [styles.stopBtn]: isStreaming,
+              })}
+              onClick={handlePrimaryAction}
+              disabled={!isStreaming && !message.trim()}
+              title={isStreaming ? '停止生成' : '发送消息'}
             >
-              <ArrowUp size={20} strokeWidth={2} />
+              {isStreaming ? <span className={styles.stopIcon} aria-hidden="true" /> : <ArrowUp size={20} strokeWidth={2} />}
             </button>
           </div>
         </div>

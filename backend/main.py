@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 load_dotenv()
 
 from routers.auth import initialize_auth_schema, router as auth_router
-from routers.chat import router as chat_router
+from routers.chat import initialize_chat_schema, router as chat_router
 
 app = FastAPI()
 
@@ -56,6 +56,7 @@ async def startup_event() -> None:
     在应用启动阶段初始化认证相关数据结构。
     """
     initialize_auth_schema()
+    initialize_chat_schema()
 
 
 @app.exception_handler(HTTPException)

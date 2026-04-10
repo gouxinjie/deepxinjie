@@ -1,9 +1,9 @@
 /**
  * @component ChatMessage
- * @description 聊天消息组件，负责渲染用户消息、模型回复、推理过程和引用入口
+ * @description 聊天消息组件，负责渲染用户消息、模型回答、推理过程和消息操作
  * @author gouxinjie
  * @created 2026-03-16
- * @updated 2026-04-08
+ * @updated 2026-04-10
  */
 import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
@@ -17,6 +17,7 @@ import {
   Copy,
   Download,
   Pencil,
+  Play,
   RotateCcw,
   Search,
   ThumbsDown,
@@ -35,6 +36,8 @@ interface ChatMessageProps {
   onEditSendMessage?: (newContent: string) => Promise<boolean>;
   /** 重新生成回调 */
   onRegenerate?: () => void;
+  /** 继续生成回调 */
+  onContinueGenerate?: () => void;
   /** 打开来源侧栏回调 */
   onOpenCitations?: (payload: { message: Message; activeCitationId?: number }) => void;
 }
@@ -52,6 +55,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
   message,
   onEditSendMessage,
   onRegenerate,
+  onContinueGenerate,
   onOpenCitations,
 }) => {
   const isUser = message.role === 'user';
@@ -66,6 +70,11 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
   const timerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
+
+  const isStreaming = message.status === 'streaming';
+  const isStopped = message.status === 'stopped';
+  const isCompleted = !message.status || message.status === 'completed';
+  const isDeepThinkMessage = Boolean(message.reasoning?.trim()) || Boolean(message.isThinking) || (message.thinkingTime ?? 0) > 0;
 
   useEffect(() => {
     if (message.isThinking) {
@@ -102,6 +111,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
     if (!message.citations || message.citations.length === 0) {
       return;
     }
+
     onOpenCitations?.({ message, activeCitationId: citationId });
   };
 
@@ -118,6 +128,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
     if (!element) {
       return;
     }
+
     const maxHeight = 180;
     element.style.height = 'auto';
     const nextHeight = Math.min(element.scrollHeight, maxHeight);
@@ -129,7 +140,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
     if (isEditing) {
       syncEditTextareaHeight();
     }
-  }, [isEditing, editValue]);
+  }, [editValue, isEditing]);
 
   const handleCopy = async () => {
     try {
@@ -144,6 +155,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
       document.execCommand('copy');
       document.body.removeChild(textarea);
     }
+
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1200);
   };
@@ -276,11 +288,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
                 <button className={styles.editCancelBtn} onClick={cancelEdit} disabled={isEditSending}>
                   取消
                 </button>
-                <button
-                  className={styles.editSendBtn}
-                  onClick={() => void sendEdit()}
-                  disabled={isEditSending}
-                >
+                <button className={styles.editSendBtn} onClick={() => void sendEdit()} disabled={isEditSending}>
                   {isEditSending ? '发送中...' : '发送'}
                 </button>
               </div>
@@ -301,8 +309,8 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
           )
         ) : (
           <div className={styles.messageContent}>
-            {message.searchStatus && (
-              message.citations && message.citations.length > 0 ? (
+            {message.searchStatus &&
+              (message.citations && message.citations.length > 0 ? (
                 <button
                   type="button"
                   className={styles.searchStatusButton}
@@ -314,8 +322,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
                 </button>
               ) : (
                 <div className={styles.searchStatus}>{message.searchStatus}</div>
-              )
-            )}
+              ))}
             {message.content ? (
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
@@ -325,6 +332,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
                     if (href?.startsWith('#citation-')) {
                       const matchedId = href.match(/#citation-(\d+)$/);
                       const citationId = matchedId ? Number.parseInt(matchedId[1], 10) : NaN;
+
                       return (
                         <button
                           type="button"
@@ -351,56 +359,72 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
               >
                 {contentWithCitationLinks}
               </ReactMarkdown>
-            ) : (message.isLoading || (!message.isThinking && message.content.length === 0)) && (
-              <TypingIndicator />
-            )}
+            ) : (message.isLoading || (isStreaming && !message.content)) && <TypingIndicator />}
           </div>
         )}
 
-        {!isUser && message.content.length > 0 && !message.isThinking && (
+        {!isUser && (message.content.length > 0 || isStopped) && !message.isThinking && (
           <>
-            <p className={styles.disclaimer}>本回答由 AI 生成，内容仅供参考，请仔细甄别。</p>
+            <p className={styles.disclaimer}>
+              {isStopped
+                ? isDeepThinkMessage
+                  ? '本次回答已停止。'
+                  : '本次回答已停止，你可以继续生成。'
+                : '本回答由 AI 生成，内容仅供参考，请仔细甄别。'}
+            </p>
 
             <div className={styles.actions}>
-              <button className={styles.actionBtn} onClick={handleCopy} title="复制">
-                {copied ? <Check size={16} className={styles.activeIcon} /> : <Copy size={16} />}
-              </button>
-              <button className={styles.actionBtn} onClick={onRegenerate} title="重新生成">
-                <RotateCcw size={16} />
-              </button>
-              {message.citations && message.citations.length > 0 && (
+              {message.content.length > 0 && (
+                <>
+                  <button className={styles.actionBtn} onClick={handleCopy} title="复制">
+                    {copied ? <Check size={16} className={styles.activeIcon} /> : <Copy size={16} />}
+                  </button>
+                  {message.citations && message.citations.length > 0 && (
+                    <button className={styles.actionBtn} onClick={() => onOpenCitations?.({ message })} title="查看来源">
+                      <Search size={16} />
+                    </button>
+                  )}
+                  <button
+                    className={classNames(styles.actionBtn, { [styles.active]: isLiked })}
+                    onClick={() => {
+                      setIsLiked(!isLiked);
+                      if (isDisliked) {
+                        setIsDisliked(false);
+                      }
+                    }}
+                    title="点赞"
+                  >
+                    <ThumbsUp size={16} fill={isLiked ? 'currentColor' : 'none'} />
+                  </button>
+                  <button
+                    className={classNames(styles.actionBtn, { [styles.active]: isDisliked })}
+                    onClick={() => {
+                      setIsDisliked(!isDisliked);
+                      if (isLiked) {
+                        setIsLiked(false);
+                      }
+                    }}
+                    title="点踩"
+                  >
+                    <ThumbsDown size={16} fill={isDisliked ? 'currentColor' : 'none'} />
+                  </button>
+                </>
+              )}
+              {isStopped && !isDeepThinkMessage && (
                 <button
-                  className={styles.actionBtn}
-                  onClick={() => onOpenCitations?.({ message })}
-                  title="查看来源"
+                  className={classNames(styles.actionBtn, styles.continueBtn, styles.actionAlignEnd)}
+                  onClick={onContinueGenerate}
+                  title="继续生成"
                 >
-                  <Search size={16} />
+                  <Play size={15} />
+                  <span>继续生成</span>
                 </button>
               )}
-              <button
-                className={classNames(styles.actionBtn, { [styles.active]: isLiked })}
-                onClick={() => {
-                  setIsLiked(!isLiked);
-                  if (isDisliked) {
-                    setIsDisliked(false);
-                  }
-                }}
-                title="点赞"
-              >
-                <ThumbsUp size={16} fill={isLiked ? 'currentColor' : 'none'} />
-              </button>
-              <button
-                className={classNames(styles.actionBtn, { [styles.active]: isDisliked })}
-                onClick={() => {
-                  setIsDisliked(!isDisliked);
-                  if (isLiked) {
-                    setIsLiked(false);
-                  }
-                }}
-                title="点踩"
-              >
-                <ThumbsDown size={16} fill={isDisliked ? 'currentColor' : 'none'} />
-              </button>
+              {(isCompleted || isStopped) && (
+                <button className={styles.actionBtn} onClick={onRegenerate} title="重新生成">
+                  <RotateCcw size={16} />
+                </button>
+              )}
             </div>
           </>
         )}

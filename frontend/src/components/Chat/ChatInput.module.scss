@@ -131,8 +131,8 @@
 // 发送按钮：圆形蓝底
 .sendBtn {
   @include flex-center;
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   border-radius: $radius-round;
   border: none;
   background-color: $color-border;
@@ -140,6 +140,7 @@
   cursor: default;
   transition: all 0.2s;
   padding: 0;
+  box-shadow: 0 8px 16px rgba(37, 99, 235, 0.12);
 
   &.hasContent {
     background-color: $color-primary;
@@ -155,9 +156,31 @@
   }
 
   svg {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
   }
+
+  &.stopBtn {
+    background-color: $color-primary;
+    cursor: pointer;
+    box-shadow: 0 8px 16px rgba(37, 99, 235, 0.18);
+
+    &:hover {
+      background-color: $color-primary-hover;
+    }
+
+    &:active {
+      background-color: $color-primary-active;
+    }
+  }
+}
+
+.stopIcon {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background-color: $color-bg;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 // 自定义提示弹窗样式
@@ -283,8 +306,8 @@
   }
 
   .sendBtn {
-    width: 38px;
-    height: 38px;
+    width: 42px;
+    height: 42px;
     background-color: $color-border;
     
     &.hasContent {
@@ -293,9 +316,13 @@
     }
 
     svg {
-      width: 20px;
-      height: 20px;
+      width: 18px;
+      height: 18px;
       color: $color-bg;
+    }
+
+    &.stopBtn {
+      background-color: $color-primary;
     }
   }
 }

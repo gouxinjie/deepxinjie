@@ -2,10 +2,10 @@
  * @description 聊天界面使用的前端消息模型
  * @author
  * @created 2026-04-07
- * @updated 2026-04-07
+ * @updated 2026-04-10
  */
 
-import type { MessageRole, SearchCitation } from './api';
+import type { MessageRole, MessageStatus, SearchCitation } from './api';
 
 /**
  * 聊天消息展示模型。
@@ -29,4 +29,6 @@ export interface Message {
   thinkingTime?: number;
   /** 是否处于加载中 */
   isLoading?: boolean;
+  /** 消息生成状态 */
+  status?: MessageStatus;
 }

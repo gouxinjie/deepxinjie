@@ -140,6 +140,9 @@
   position: -webkit-sticky;
   position: sticky;
   top: 0;
+  z-index: 2;
+  background: $color-bg-soft;
+  box-shadow: 0 6px 0 $color-bg-soft;
 }
 
 .historyItemWrapper {
