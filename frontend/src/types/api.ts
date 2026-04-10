@@ -81,11 +81,23 @@ export interface AuthUser {
 }
 
 /**
- * 手机号登录请求参数。
+ * 登录请求参数。
  */
 export interface LoginPayload {
-  /** 手机号 */
+  /** 手机号账号 */
   phone: string;
+  /** 登录密码 */
+  password: string;
+}
+
+/**
+ * 注册请求参数。
+ */
+export interface RegisterPayload {
+  /** 手机号账号 */
+  phone: string;
+  /** 用户名 */
+  nickname: string;
   /** 登录密码 */
   password: string;
 }
@@ -108,30 +120,6 @@ export interface AuthSessionData {
 export interface CurrentUserData {
   /** 当前登录用户 */
   user: AuthUser;
-}
-
-/**
- * 二维码登录数据。
- */
-export interface QrCodeData {
-  /** 二维码图片地址 */
-  qr_url: string;
-  /** 二维码轮询场景值 */
-  scene_str: string;
-}
-
-/**
- * 二维码轮询状态数据。
- */
-export interface QrCodeStatusData {
-  /** 轮询状态 */
-  status?: number;
-  /** 短效 Access Token */
-  accessToken?: string;
-  /** Access Token 剩余有效秒数 */
-  expiresIn?: number;
-  /** 当前登录用户 */
-  user?: AuthUser;
 }
 
 /**

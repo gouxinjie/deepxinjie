@@ -14,8 +14,7 @@ import type {
   DeleteMessagesData,
   LoginPayload,
   MessageListData,
-  QrCodeData,
-  QrCodeStatusData,
+  RegisterPayload,
   SendMessagePayload,
   SessionListData,
 } from '../types/api';
@@ -51,15 +50,7 @@ const authClient = axios.create({
   withCredentials: true,
 });
 
-const AUTH_RETRY_EXCLUDED_URLS = [
-  '/auth/login',
-  '/auth/refresh',
-  '/auth/logout',
-  '/auth/qrcode',
-  '/auth/qrcode/status',
-  '/auth/wechat/callback',
-] as const;
-
+const AUTH_RETRY_EXCLUDED_URLS = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout'] as const;
 const CSRF_COOKIE_NAME = 'csrf_token';
 const CSRF_HEADER_NAME = 'X-CSRF-Token';
 
@@ -89,10 +80,7 @@ const getCookieValue = (name: string): string | null => {
   }
 
   const prefix = `${name}=`;
-  const cookieItem = document.cookie
-    .split('; ')
-    .find((item) => item.startsWith(prefix));
-
+  const cookieItem = document.cookie.split('; ').find((item) => item.startsWith(prefix));
   if (!cookieItem) {
     return null;
   }
@@ -137,6 +125,7 @@ const attachRequestHeaders = (
 
 /**
  * 读取当前登录 Token。
+ * @returns Access Token 或 null
  */
 export const getAuthToken = (): string | null => useAuthStore.getState().accessToken;
 
@@ -166,7 +155,7 @@ const redirectToLogin = (): void => {
 
 /**
  * 统一处理登录凭证失效。
- * @param shouldRedirect - 是否立即跳转登录页
+ * @param shouldRedirect - 是否立刻跳转登录页
  */
 const handleUnauthorized = (shouldRedirect: boolean): void => {
   clearAuthSession();
@@ -178,9 +167,9 @@ const handleUnauthorized = (shouldRedirect: boolean): void => {
 };
 
 /**
- * 从 axios / fetch 异常中提取中文错误信息。
+ * 从 axios 或 fetch 异常中提取中文错误信息。
  * @param error - 任意异常对象
- * @returns 可直接展示给用户的中文消息
+ * @returns 可直接展示给用户的错误消息
  */
 export const extractApiErrorMessage = (error: unknown): string => {
   if (axios.isAxiosError<ApiResponse<unknown> | ApiDetailResponse>(error)) {
@@ -281,7 +270,7 @@ authClient.interceptors.request.use((config: InternalAxiosRequestConfig) =>
 );
 
 /**
- * 统一处理 401，先尝试刷新，再决定是否回到登录页。
+ * 统一处理 401，优先刷新，再决定是否跳回登录页。
  */
 api.interceptors.response.use(
   (response) => response,
@@ -322,29 +311,22 @@ api.interceptors.response.use(
 
 export const authApi = {
   /**
-   * 手机号密码登录。
+   * 账号密码登录。
    * @param data - 登录参数
    */
   login: (data: LoginPayload) => api.post<ApiResponse<AuthSessionData>>('/auth/login', data),
 
   /**
+   * 注册账号。
+   * @param data - 注册参数
+   */
+  register: (data: RegisterPayload) =>
+    api.post<ApiResponse<AuthSessionData>>('/auth/register', data),
+
+  /**
    * 获取当前登录用户信息。
    */
   me: () => api.get<ApiResponse<CurrentUserData>>('/auth/me'),
-
-  /**
-   * 获取微信登录二维码。
-   */
-  getQrCode: () => api.get<ApiResponse<QrCodeData>>('/auth/qrcode'),
-
-  /**
-   * 轮询二维码登录状态。
-   * @param sceneStr - 二维码场景值
-   */
-  checkStatus: (sceneStr: string) =>
-    api.get<ApiResponse<QrCodeStatusData>>(
-      `/auth/qrcode/status?scene_str=${encodeURIComponent(sceneStr)}`,
-    ),
 
   /**
    * 退出登录。
@@ -423,8 +405,8 @@ export const messageApi = {
 /**
  * 构造聊天流请求。
  * @param accessToken - 当前 Access Token
- * @param payload - 发送请求体
- * @param signal - 中断控制器信号
+ * @param payload - 请求体
+ * @param signal - 中断信号
  * @returns 原始 fetch 响应
  */
 const requestChatStream = async (
@@ -446,10 +428,9 @@ const requestChatStream = async (
 
 /**
  * 通过 fetch + POST 接入受鉴权保护的流式聊天接口。
- *
  * 说明：
- * - EventSource 不支持 POST 和自定义 Authorization 头。
- * - 因此这里改为 fetch 读取 SSE 文本流，并手动解析 `data:` 分片。
+ * - EventSource 不支持 POST 和自定义 Authorization 头
+ * - 这里改为 fetch 读取 SSE 文本流，并手动解析 data 分片
  */
 export const sendChatStream = async ({
   payload,

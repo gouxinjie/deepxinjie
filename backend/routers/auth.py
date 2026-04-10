@@ -1,14 +1,11 @@
 import hashlib
 import os
+import re
 import secrets
-import time
-import uuid
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
 import jwt
-import requests
-import xmltodict
 from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response, status
 from passlib.context import CryptContext
 from pydantic import BaseModel
@@ -18,8 +15,6 @@ from db import connection_pool, get_db
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-WECHAT_APPID = os.getenv("WECHAT_APPID")
-WECHAT_SECRET = os.getenv("WECHAT_SECRET")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "15"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
 REFRESH_TOKEN_COOKIE_NAME = "refresh_token"
@@ -29,27 +24,40 @@ CSRF_TOKEN_COOKIE_PATH = "/"
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"
 COOKIE_SAMESITE = os.getenv("COOKIE_SAMESITE", "lax").lower()
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+PHONE_PATTERN = re.compile(r"^1\d{10}$")
+NICKNAME_MIN_LENGTH = 2
+NICKNAME_MAX_LENGTH = 50
+PASSWORD_MIN_LENGTH = 6
+PASSWORD_MAX_LENGTH = 32
 
-# 微信 access_token 的轻量缓存。
-_access_token_cache: dict[str, Any] = {
-    "token": None,
-    "expire_at": 0,
-}
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class LoginRequest(BaseModel):
     """
-    手机号登录请求体。
+    账号密码登录请求体。
     """
 
     phone: str
     password: str
 
 
+class RegisterRequest(BaseModel):
+    """
+    注册请求体。
+    """
+
+    phone: str
+    nickname: str
+    password: str
+
+
 def build_success_response(data: Any, message: str = "操作成功") -> dict[str, Any]:
     """
     构造统一成功响应。
+    @param data - 响应数据
+    @param message - 响应消息
+    @returns 统一成功响应结构
     """
     return {
         "success": True,
@@ -59,9 +67,13 @@ def build_success_response(data: Any, message: str = "操作成功") -> dict[str
     }
 
 
-def build_error_response(code: int, message: str, data: Any = None) -> dict[str, Any]:
+def build_error_response(code: int | str, message: str, data: Any = None) -> dict[str, Any]:
     """
     构造统一错误响应。
+    @param code - 业务状态码
+    @param message - 错误消息
+    @param data - 错误附加数据
+    @returns 统一错误响应结构
     """
     return {
         "success": False,
@@ -73,16 +85,83 @@ def build_error_response(code: int, message: str, data: Any = None) -> dict[str,
 
 def normalize_cookie_samesite() -> str:
     """
-    规范化 Cookie 的 SameSite 配置。
+    规范化 Cookie SameSite 配置。
+    @returns 合法的 SameSite 值
     """
     if COOKIE_SAMESITE in {"lax", "strict", "none"}:
         return COOKIE_SAMESITE
     return "lax"
 
 
+def normalize_phone(phone: str) -> str:
+    """
+    规范化手机号。
+    @param phone - 原始手机号
+    @returns 清洗后的手机号
+    @throws HTTPException 当手机号格式非法时抛出 400
+    """
+    normalized_phone = "".join(phone.split())
+    if not PHONE_PATTERN.fullmatch(normalized_phone):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="请输入正确的 11 位手机号",
+        )
+    return normalized_phone
+
+
+def normalize_nickname(nickname: str) -> str:
+    """
+    规范化用户名。
+    @param nickname - 原始用户名
+    @returns 清洗后的用户名
+    @throws HTTPException 当用户名为空或长度超限时抛出 400
+    """
+    normalized_nickname = nickname.strip()
+    nickname_length = len(normalized_nickname)
+    if nickname_length < NICKNAME_MIN_LENGTH or nickname_length > NICKNAME_MAX_LENGTH:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"用户名长度需在 {NICKNAME_MIN_LENGTH}-{NICKNAME_MAX_LENGTH} 个字符之间",
+        )
+    return normalized_nickname
+
+
+def normalize_register_password(password: str) -> str:
+    """
+    校验注册密码。
+    @param password - 原始密码
+    @returns 原样返回密码
+    @throws HTTPException 当密码长度不符合要求时抛出 400
+    """
+    password_length = len(password)
+    if password_length < PASSWORD_MIN_LENGTH or password_length > PASSWORD_MAX_LENGTH:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"密码长度需在 {PASSWORD_MIN_LENGTH}-{PASSWORD_MAX_LENGTH} 位之间",
+        )
+    return password
+
+
+def normalize_login_password(password: str) -> str:
+    """
+    校验登录密码是否为空。
+    @param password - 原始密码
+    @returns 原样返回密码
+    @throws HTTPException 当密码为空时抛出 400
+    """
+    if not password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="请输入密码",
+        )
+    return password
+
+
 def create_access_token(user_id: int) -> str:
     """
     生成短效 Access Token。
+    @param user_id - 用户 ID
+    @returns Access Token
     """
     now = datetime.utcnow()
     return jwt.encode(
@@ -100,20 +179,27 @@ def create_access_token(user_id: int) -> str:
 def get_password_hash(password: str) -> str:
     """
     对明文密码进行哈希处理。
+    @param password - 明文密码
+    @returns 密码哈希
     """
     return pwd_context.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
-    校验明文密码与数据库哈希是否匹配。
+    校验密码是否匹配。
+    @param plain_password - 明文密码
+    @param hashed_password - 哈希密码
+    @returns 是否匹配
     """
     return pwd_context.verify(plain_password, hashed_password)
 
 
 def build_user_data(user_row: dict[str, Any]) -> dict[str, Any]:
     """
-    将数据库用户记录转换为响应结构。
+    构造前端用户数据。
+    @param user_row - 数据库用户记录
+    @returns 用户响应数据
     """
     return {
         "id": int(user_row["id"]),
@@ -126,6 +212,8 @@ def build_user_data(user_row: dict[str, Any]) -> dict[str, Any]:
 def get_request_ip(request: Request) -> str:
     """
     获取请求来源 IP。
+    @param request - 当前请求对象
+    @returns 请求 IP
     """
     forwarded_for = request.headers.get("x-forwarded-for", "")
     if forwarded_for:
@@ -139,28 +227,34 @@ def get_request_ip(request: Request) -> str:
 
 def hash_token(token: str) -> str:
     """
-    计算令牌哈希值，避免明文入库。
+    对令牌进行哈希处理。
+    @param token - 原始令牌
+    @returns 令牌哈希
     """
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 def generate_refresh_token() -> str:
     """
-    生成新的 Refresh Token。
+    生成 Refresh Token。
+    @returns Refresh Token
     """
     return secrets.token_urlsafe(48)
 
 
 def generate_csrf_token() -> str:
     """
-    生成新的 CSRF Token。
+    生成 CSRF Token。
+    @returns CSRF Token
     """
     return secrets.token_urlsafe(32)
 
 
 def set_refresh_cookie(response: Response, refresh_token: str) -> None:
     """
-    将 Refresh Token 写入 HttpOnly Cookie。
+    写入 Refresh Token Cookie。
+    @param response - 响应对象
+    @param refresh_token - Refresh Token
     """
     response.set_cookie(
         key=REFRESH_TOKEN_COOKIE_NAME,
@@ -175,7 +269,9 @@ def set_refresh_cookie(response: Response, refresh_token: str) -> None:
 
 def set_csrf_cookie(response: Response, csrf_token: str) -> None:
     """
-    将 CSRF Token 写入浏览器可读 Cookie，供前端回填请求头。
+    写入 CSRF Token Cookie。
+    @param response - 响应对象
+    @param csrf_token - CSRF Token
     """
     response.set_cookie(
         key=CSRF_TOKEN_COOKIE_NAME,
@@ -190,7 +286,8 @@ def set_csrf_cookie(response: Response, csrf_token: str) -> None:
 
 def clear_auth_cookies(response: Response) -> None:
     """
-    统一清理认证相关 Cookie。
+    清理认证相关 Cookie。
+    @param response - 响应对象
     """
     response.delete_cookie(
         key=REFRESH_TOKEN_COOKIE_NAME,
@@ -204,10 +301,10 @@ def clear_auth_cookies(response: Response) -> None:
 
 def initialize_auth_schema() -> None:
     """
-    在服务启动时初始化认证所需数据表结构。
+    初始化认证相关表结构。
     说明：
-    - 该逻辑只在启动阶段执行一次。
-    - 运行期请求路径不再承担建表职责。
+    - 只补齐 user_session 表与缺失字段
+    - 不删除任何历史用户和会话数据
     """
     db = connection_pool.get_connection()
     cursor = db.cursor()
@@ -251,7 +348,8 @@ def initialize_auth_schema() -> None:
 
 def cleanup_expired_sessions(db: Any) -> None:
     """
-    清理已过期的会话记录，避免无效会话长期保留。
+    将已过期会话标记为失效。
+    @param db - 数据库连接
     """
     cursor = db.cursor()
     try:
@@ -272,7 +370,7 @@ def load_user_by_id(user_id: int, db: Any) -> dict[str, Any]:
     根据用户 ID 查询用户信息。
     @param user_id - 用户 ID
     @param db - 数据库连接
-    @returns 用户响应结构
+    @returns 用户信息
     @throws HTTPException 当用户不存在时抛出 404
     """
     cursor = db.cursor(dictionary=True)
@@ -294,6 +392,48 @@ def load_user_by_id(user_id: int, db: Any) -> dict[str, Any]:
     return build_user_data(user_row)
 
 
+def load_user_by_phone(phone: str, db: Any) -> Optional[dict[str, Any]]:
+    """
+    根据手机号查询用户信息。
+    @param phone - 手机号
+    @param db - 数据库连接
+    @returns 用户记录或空值
+    """
+    cursor = db.cursor(dictionary=True)
+    try:
+        cursor.execute(
+            "SELECT id, phone, password_hash, nickname, avatar FROM user WHERE phone = %s LIMIT 1",
+            (phone,),
+        )
+        return cursor.fetchone()
+    finally:
+        cursor.close()
+
+
+def create_user_with_password(phone: str, nickname: str, password: str, db: Any) -> int:
+    """
+    创建账号密码用户。
+    @param phone - 手机号
+    @param nickname - 用户名
+    @param password - 明文密码
+    @param db - 数据库连接
+    @returns 新用户 ID
+    """
+    cursor = db.cursor()
+    try:
+        cursor.execute(
+            "INSERT INTO user (phone, password_hash, nickname) VALUES (%s, %s, %s)",
+            (phone, get_password_hash(password), nickname),
+        )
+        db.commit()
+        return int(cursor.lastrowid)
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        cursor.close()
+
+
 def create_user_session(
     user_id: int,
     request: Request,
@@ -301,12 +441,12 @@ def create_user_session(
     db: Any,
 ) -> dict[str, Any]:
     """
-    创建新的登录会话并写入 Cookie。
+    创建登录会话并写入 Cookie。
     @param user_id - 用户 ID
     @param request - 当前请求对象
     @param response - 当前响应对象
     @param db - 数据库连接
-    @returns 前端可直接使用的认证响应数据
+    @returns 前端认证会话数据
     """
     cleanup_expired_sessions(db)
 
@@ -360,7 +500,10 @@ def create_user_session(
 
 def get_session_by_refresh_token(refresh_token: str, db: Any) -> Optional[dict[str, Any]]:
     """
-    根据 Refresh Token 查询当前有效会话。
+    根据 Refresh Token 查询有效会话。
+    @param refresh_token - Refresh Token
+    @param db - 数据库连接
+    @returns 会话记录或空值
     """
     cleanup_expired_sessions(db)
 
@@ -391,10 +534,10 @@ def get_session_by_refresh_token(refresh_token: str, db: Any) -> Optional[dict[s
 
 def validate_csrf_token(session_row: dict[str, Any], csrf_token: Optional[str]) -> None:
     """
-    校验双重提交 CSRF Token。
-    @param session_row - 当前会话记录
+    校验 CSRF Token。
+    @param session_row - 会话记录
     @param csrf_token - 请求头中的 CSRF Token
-    @throws HTTPException 当 CSRF Token 缺失或不匹配时抛出 403
+    @throws HTTPException 当 Token 缺失或不匹配时抛出 403
     """
     if not csrf_token:
         raise HTTPException(
@@ -418,7 +561,13 @@ def rotate_user_session(
     db: Any,
 ) -> dict[str, Any]:
     """
-    轮换 Refresh Token 和 CSRF Token，并签发新的 Access Token。
+    轮换会话令牌并返回新的 Access Token。
+    @param session_id - 会话 ID
+    @param user_id - 用户 ID
+    @param request - 当前请求对象
+    @param response - 当前响应对象
+    @param db - 数据库连接
+    @returns 新会话数据
     """
     refresh_token = generate_refresh_token()
     csrf_token = generate_csrf_token()
@@ -468,7 +617,9 @@ def rotate_user_session(
 
 def invalidate_session_by_refresh_token(refresh_token: str, db: Any) -> None:
     """
-    将指定 Refresh Token 对应的会话置为失效。
+    将 Refresh Token 对应会话置为失效。
+    @param refresh_token - Refresh Token
+    @param db - 数据库连接
     """
     cursor = db.cursor()
     try:
@@ -488,82 +639,82 @@ def invalidate_session_by_refresh_token(refresh_token: str, db: Any) -> None:
         cursor.close()
 
 
-def get_wechat_access_token() -> str:
+@router.post("/register")
+async def register(
+    req: RegisterRequest,
+    request: Request,
+    response: Response,
+    db=Depends(get_db),
+) -> dict[str, Any]:
     """
-    获取微信 Access Token。
-    @throws RuntimeError 当微信配置缺失或接口返回异常时抛出错误
+    注册新账号并创建登录会话。
+    @param req - 注册请求体
+    @param request - 当前请求对象
+    @param response - 当前响应对象
+    @param db - 数据库连接
+    @returns 注册后的会话信息
     """
-    if not WECHAT_APPID or not WECHAT_SECRET:
-        raise RuntimeError("未配置微信登录所需环境变量")
+    try:
+        phone = normalize_phone(req.phone)
+        nickname = normalize_nickname(req.nickname)
+        password = normalize_register_password(req.password)
+    except HTTPException as exc:
+        return build_error_response(exc.status_code, str(exc.detail))
 
-    now = time.time()
-    cached_token = _access_token_cache["token"]
-    if cached_token and _access_token_cache["expire_at"] > now:
-        return str(cached_token)
+    existing_user = load_user_by_phone(phone, db)
+    if existing_user:
+        return build_error_response(409, "该账号已注册")
 
-    url = (
-        "https://api.weixin.qq.com/cgi-bin/token"
-        f"?grant_type=client_credential&appid={WECHAT_APPID}&secret={WECHAT_SECRET}"
+    try:
+        user_id = create_user_with_password(phone, nickname, password, db)
+    except Exception:
+        return build_error_response(500, "注册失败，请稍后重试")
+
+    session_data = create_user_session(
+        user_id=user_id,
+        request=request,
+        response=response,
+        db=db,
     )
-    resp = requests.get(url, timeout=10).json()
-    access_token = resp.get("access_token")
-    if not access_token:
-        raise RuntimeError(
-            f"获取微信 Access Token 失败：{resp.get('errmsg', '未知错误')}"
-        )
-
-    _access_token_cache["token"] = access_token
-    _access_token_cache["expire_at"] = now + int(resp.get("expires_in", 7200)) - 60
-    return str(access_token)
+    return build_success_response(session_data, "注册成功")
 
 
 @router.post("/login")
-async def login_by_phone(
+async def login(
     req: LoginRequest,
     request: Request,
     response: Response,
     db=Depends(get_db),
 ) -> dict[str, Any]:
     """
-    手机号密码登录。
-    行为：
-    - 用户不存在时自动注册
-    - 用户存在时校验密码
-    - 登录成功后签发短效 Access Token 和长效 Refresh Token
+    使用账号密码登录。
+    @param req - 登录请求体
+    @param request - 当前请求对象
+    @param response - 当前响应对象
+    @param db - 数据库连接
+    @returns 登录后的会话信息
     """
-    cursor = db.cursor(dictionary=True)
     try:
-        cursor.execute(
-            "SELECT id, phone, password_hash, nickname, avatar FROM user WHERE phone = %s",
-            (req.phone,),
-        )
-        user = cursor.fetchone()
+        phone = normalize_phone(req.phone)
+        password = normalize_login_password(req.password)
+    except HTTPException as exc:
+        return build_error_response(exc.status_code, str(exc.detail))
 
-        if not user:
-            hashed_password = get_password_hash(req.password)
-            nickname = f"用户_{req.phone[-4:]}"
-            cursor.execute(
-                "INSERT INTO user (phone, password_hash, nickname) VALUES (%s, %s, %s)",
-                (req.phone, hashed_password, nickname),
-            )
-            db.commit()
-            user_id = int(cursor.lastrowid)
-        else:
-            password_hash = user.get("password_hash")
-            if not password_hash or not verify_password(req.password, str(password_hash)):
-                return build_error_response(401, "手机号或密码错误")
+    user = load_user_by_phone(phone, db)
+    if not user:
+        return build_error_response(401, "账号或密码错误")
 
-            user_id = int(user["id"])
+    password_hash = str(user.get("password_hash") or "")
+    if not password_hash or not verify_password(password, password_hash):
+        return build_error_response(401, "账号或密码错误")
 
-        session_data = create_user_session(
-            user_id=user_id,
-            request=request,
-            response=response,
-            db=db,
-        )
-        return build_success_response(session_data, "登录成功")
-    finally:
-        cursor.close()
+    session_data = create_user_session(
+        user_id=int(user["id"]),
+        request=request,
+        response=response,
+        db=db,
+    )
+    return build_success_response(session_data, "登录成功")
 
 
 @router.post("/refresh")
@@ -575,7 +726,13 @@ async def refresh_access_token(
     db=Depends(get_db),
 ) -> dict[str, Any]:
     """
-    使用 Refresh Token 自动续签新的 Access Token。
+    刷新 Access Token。
+    @param request - 当前请求对象
+    @param response - 当前响应对象
+    @param refresh_token - Cookie 中的 Refresh Token
+    @param x_csrf_token - 请求头中的 CSRF Token
+    @param db - 数据库连接
+    @returns 新的会话数据
     """
     if not refresh_token:
         raise HTTPException(
@@ -609,151 +766,12 @@ async def get_me(
 ) -> dict[str, Any]:
     """
     获取当前登录用户信息。
+    @param user_id - 当前登录用户 ID
+    @param db - 数据库连接
+    @returns 用户信息
     """
     user_data = load_user_by_id(user_id, db)
     return build_success_response({"user": user_data}, "获取成功")
-
-
-@router.get("/qrcode")
-async def get_login_qrcode(db=Depends(get_db)) -> dict[str, Any]:
-    """
-    生成微信扫码登录二维码。
-    """
-    try:
-        token = get_wechat_access_token()
-    except RuntimeError as exc:
-        return build_error_response(500, str(exc))
-
-    scene_str = str(uuid.uuid4())
-    qrcode_url = f"https://api.weixin.qq.com/cgi-bin/qrcode/create?access_token={token}"
-    payload = {
-        "expire_seconds": 600,
-        "action_name": "QR_STR_SCENE",
-        "action_info": {"scene": {"scene_str": scene_str}},
-    }
-
-    response_data = requests.post(qrcode_url, json=payload, timeout=10).json()
-    ticket = response_data.get("ticket")
-    if not ticket:
-        return build_error_response(500, "生成二维码失败", response_data)
-
-    cursor = db.cursor()
-    try:
-        expire_time = datetime.now() + timedelta(seconds=600)
-        cursor.execute(
-            "INSERT INTO login_qrcode (scene_str, status, expire_time) VALUES (%s, %s, %s)",
-            (scene_str, 0, expire_time),
-        )
-        db.commit()
-    except Exception as exc:
-        db.rollback()
-        return build_error_response(500, f"保存二维码状态失败：{exc}")
-    finally:
-        cursor.close()
-
-    return build_success_response(
-        {
-            "qr_url": f"https://mp.weixin.qq.com/cgi-bin/showqrcode?ticket={ticket}",
-            "scene_str": scene_str,
-        }
-    )
-
-
-@router.get("/qrcode/status")
-async def check_qrcode_status(
-    scene_str: str,
-    request: Request,
-    response: Response,
-    db=Depends(get_db),
-) -> dict[str, Any]:
-    """
-    轮询二维码登录状态。
-    """
-    cursor = db.cursor(dictionary=True)
-    try:
-        cursor.execute(
-            "SELECT * FROM login_qrcode WHERE scene_str = %s",
-            (scene_str,),
-        )
-        record = cursor.fetchone()
-        if not record:
-            return build_error_response(404, "二维码不存在")
-
-        if int(record["status"]) != 1:
-            return {
-                "success": True,
-                "code": 201,
-                "message": "等待扫码",
-                "data": {"status": int(record["status"])},
-            }
-
-        openid = str(record.get("openid") or "")
-        cursor.execute(
-            "SELECT id, phone, nickname, avatar FROM user WHERE openid = %s",
-            (openid,),
-        )
-        user = cursor.fetchone()
-
-        if not user:
-            nickname = f"微信用户_{openid[:8]}"
-            cursor.execute(
-                "INSERT INTO user (openid, nickname) VALUES (%s, %s)",
-                (openid, nickname),
-            )
-            db.commit()
-            user_id = int(cursor.lastrowid)
-        else:
-            user_id = int(user["id"])
-
-        session_data = create_user_session(
-            user_id=user_id,
-            request=request,
-            response=response,
-            db=db,
-        )
-        return build_success_response(session_data, "登录成功")
-    finally:
-        cursor.close()
-
-
-@router.post("/wechat/callback")
-async def wechat_callback(request: Request, db=Depends(get_db)) -> Response:
-    """
-    微信服务器扫码回调。
-    """
-    body = await request.body()
-    if not body:
-        return Response(content="success", media_type="application/xml")
-
-    data = xmltodict.parse(body).get("xml")
-    if not data:
-        return Response(content="success", media_type="application/xml")
-
-    event = data.get("Event")
-    openid = data.get("FromUserName")
-    scene_str: Optional[str] = None
-
-    if event == "SCAN":
-        scene_str = data.get("EventKey")
-    elif event == "subscribe":
-        event_key = str(data.get("EventKey", ""))
-        if event_key.startswith("qrscene_"):
-            scene_str = event_key.replace("qrscene_", "")
-
-    if scene_str:
-        cursor = db.cursor()
-        try:
-            cursor.execute(
-                "UPDATE login_qrcode SET status = 1, openid = %s WHERE scene_str = %s",
-                (openid, scene_str),
-            )
-            db.commit()
-        except Exception:
-            db.rollback()
-        finally:
-            cursor.close()
-
-    return Response(content="success", media_type="application/xml")
 
 
 @router.post("/logout")
@@ -765,6 +783,11 @@ async def logout(
 ) -> dict[str, Any]:
     """
     退出当前设备登录。
+    @param response - 当前响应对象
+    @param refresh_token - Cookie 中的 Refresh Token
+    @param x_csrf_token - 请求头中的 CSRF Token
+    @param db - 数据库连接
+    @returns 退出结果
     """
     if refresh_token:
         session_row = get_session_by_refresh_token(refresh_token, db)

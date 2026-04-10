@@ -1,121 +1,92 @@
 /**
  * @component LoginPage
- * @description 登录页面组件，负责处理手机号登录与微信扫码登录流程
+ * @description 登录页组件，只支持账号密码登录与注册
  * @author gouxinjie
  * @created 2026-03-16
  * @updated 2026-04-10
  */
-import React, { useEffect, useRef, useState } from 'react';
-import { Lock } from 'lucide-react';
+import React, { useState } from 'react';
+import { LockKeyhole, Smartphone, UserRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import DeepXinjieLogo from '../../components/DeepXinjieLogo';
 import { authApi, extractApiErrorMessage, persistAuthSession } from '../../services/api';
 import styles from './index.module.scss';
 
+type AuthMode = 'login' | 'register';
+
+/**
+ * 校验手机号格式。
+ * @param phone - 手机号
+ * @returns 是否为合法手机号
+ */
+const isValidPhone = (phone: string): boolean => /^1\d{10}$/.test(phone);
+
 const LoginPage: React.FC = () => {
+  const navigate = useNavigate();
+  const [mode, setMode] = useState<AuthMode>('login');
   const [phone, setPhone] = useState('');
+  const [nickname, setNickname] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [qrUrl, setQrUrl] = useState('');
-  const [qrLoading, setQrLoading] = useState(false);
-  const pollTimer = useRef<number | null>(null);
-  const navigate = useNavigate();
 
   /**
-   * 页面初始化时拉取微信二维码。
+   * 切换认证模式。
+   * @param nextMode - 目标模式
    */
-  useEffect(() => {
-    void fetchQrCode();
-    return () => stopPolling();
-  }, []);
-
-  /**
-   * 获取微信登录二维码。
-   */
-  const fetchQrCode = async () => {
-    setQrLoading(true);
+  const switchMode = (nextMode: AuthMode) => {
+    setMode(nextMode);
     setError('');
+  };
 
-    try {
-      const response = await authApi.getQrCode();
-      if (!response.data.success) {
-        setError(response.data.message);
+  /**
+   * 提交登录或注册。
+   * @param event - 表单提交事件
+   */
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const normalizedPhone = phone.trim();
+    const normalizedNickname = nickname.trim();
+
+    if (!isValidPhone(normalizedPhone)) {
+      setError('请输入正确的 11 位手机号');
+      return;
+    }
+
+    if (!password) {
+      setError('请输入密码');
+      return;
+    }
+
+    if (mode === 'register') {
+      if (normalizedNickname.length < 2 || normalizedNickname.length > 50) {
+        setError('用户名长度需在 2-50 个字符之间');
         return;
       }
 
-      setQrUrl(response.data.data.qr_url);
-      startPolling(response.data.data.scene_str);
-    } catch (requestError) {
-      setError(extractApiErrorMessage(requestError));
-    } finally {
-      setQrLoading(false);
-    }
-  };
-
-  /**
-   * 轮询微信扫码状态。
-   * @param scene - 二维码场景值
-   */
-  const startPolling = (scene: string) => {
-    stopPolling();
-
-    pollTimer.current = window.setInterval(async () => {
-      try {
-        const response = await authApi.checkStatus(scene);
-        if (!response.data.success || response.data.code !== 200) {
-          return;
-        }
-
-        const { accessToken, user } = response.data.data;
-        if (!accessToken || !user) {
-          return;
-        }
-
-        persistAuthSession({
-          accessToken,
-          expiresIn: response.data.data.expiresIn || 0,
-          user,
-        });
-        stopPolling();
-        navigate('/');
-      } catch (requestError) {
-        setError(extractApiErrorMessage(requestError));
+      if (password.length < 6 || password.length > 32) {
+        setError('密码长度需在 6-32 位之间');
+        return;
       }
-    }, 2000);
-  };
-
-  /**
-   * 停止轮询。
-   */
-  const stopPolling = () => {
-    if (pollTimer.current) {
-      clearInterval(pollTimer.current);
-      pollTimer.current = null;
-    }
-  };
-
-  /**
-   * 执行手机号登录。
-   * @param event - 表单提交事件
-   */
-  const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!phone.trim() || !password.trim()) {
-      setError('请输入手机号和密码');
-      return;
     }
 
     setLoading(true);
     setError('');
 
     try {
-      const response = await authApi.login({
-        phone: phone.trim(),
-        password: password.trim(),
-      });
+      const response =
+        mode === 'login'
+          ? await authApi.login({
+              phone: normalizedPhone,
+              password,
+            })
+          : await authApi.register({
+              phone: normalizedPhone,
+              nickname: normalizedNickname,
+              password,
+            });
 
       if (!response.data.success) {
         setError(response.data.message);
@@ -132,86 +103,111 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className={styles.container}>
-      <div className={styles.logoWrapper}>
-        <DeepXinjieLogo size={32} />
-        <span className={styles.logoText}>deepxinjie</span>
-      </div>
+    <div className={styles.page}>
+      <main className={styles.main}>
+        <section className={styles.hero}>
+          <div className={styles.heroMark}>
+            <DeepXinjieLogo size={44} />
+          </div>
 
-      <div className={styles.loginBox}>
-        <div className={styles.content}>
-          <div className={styles.left}>
-            <form className={styles.form} onSubmit={handleLogin}>
-              <div className={styles.inputGroup}>
-                <span className={styles.prefix}>+86</span>
+          <div key={mode} className={styles.heroCopy}>
+            <h1 className={styles.title}>{mode === 'login' ? '欢迎回来' : '创建你的账号'}</h1>
+            <p className={styles.subtitle}>
+              {mode === 'login'
+                ? '使用手机号账号和密码继续你的会话。'
+                : '注册后会自动登录，已有会话与账号数据继续保留。'}
+            </p>
+          </div>
+        </section>
+
+        <section className={styles.card}>
+          <div className={styles.tabs}>
+            <button
+              type="button"
+              className={`${styles.tabButton} ${mode === 'login' ? styles.tabButtonActive : ''}`}
+              onClick={() => switchMode('login')}
+            >
+              登录
+            </button>
+            <button
+              type="button"
+              className={`${styles.tabButton} ${mode === 'register' ? styles.tabButtonActive : ''}`}
+              onClick={() => switchMode('register')}
+            >
+              注册
+            </button>
+          </div>
+
+          <form className={styles.form} onSubmit={handleSubmit}>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>账号</span>
+              <div className={styles.inputWrapper}>
+                <Smartphone size={18} />
                 <input
                   type="tel"
-                  placeholder="请输入手机号"
+                  inputMode="numeric"
+                  placeholder="请输入手机号账号"
                   value={phone}
                   onChange={(event) => setPhone(event.target.value)}
+                  maxLength={11}
                 />
               </div>
+            </label>
 
-              <div className={styles.inputGroup}>
+            <div
+              className={`${styles.expandField} ${mode === 'register' ? styles.expandFieldVisible : ''}`}
+              aria-hidden={mode !== 'register'}
+            >
+              <label className={styles.field}>
+                <span className={styles.fieldLabel}>用户名</span>
+                <div className={styles.inputWrapper}>
+                  <UserRound size={18} />
+                  <input
+                    type="text"
+                    placeholder="请输入用户名"
+                    value={nickname}
+                    onChange={(event) => setNickname(event.target.value)}
+                    maxLength={50}
+                    tabIndex={mode === 'register' ? 0 : -1}
+                  />
+                </div>
+              </label>
+            </div>
+
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>密码</span>
+              <div className={styles.inputWrapper}>
+                <LockKeyhole size={18} />
                 <input
                   type="password"
-                  placeholder="请输入密码"
+                  placeholder={mode === 'login' ? '请输入密码' : '请设置 6-32 位密码'}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
+                  maxLength={32}
                 />
-                <span className={styles.sendCode}>短信验证码</span>
               </div>
+            </label>
 
-              <div className={styles.agreement}>
-                注册登录即代表已阅读并同意我们的 <a>用户协议</a> 与 <a>隐私政策</a>。
-                <br />
-                未注册的手机号将自动完成注册
-              </div>
+            {error ? (
+              <div className={styles.errorMessage}>{error}</div>
+            ) : (
+              <div className={styles.errorPlaceholder}></div>
+            )}
 
-              {error && <div className={styles.errorMessage}>{error}</div>}
+            <button type="submit" className={styles.submitButton} disabled={loading}>
+              {loading ? '处理中...' : mode === 'login' ? '继续' : '注册并继续'}
+            </button>
 
-              <button type="submit" className={styles.submitBtn} disabled={loading}>
-                {loading ? '正在登录...' : '登录'}
-              </button>
-
-              <div className={styles.otherMethods}>
-                <div className={styles.divider}></div>
-                <div className={styles.icons}>
-                  <div className={styles.iconBtn}>
-                    <Lock size={18} />
-                  </div>
-                  <div className={styles.iconBtn}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C4.37 16.92 4.14 11.08 6.94 9.17c1.45-1 3-1.09 4.19-.11.45.37.9.37 1.34 0 1.25-.94 2.92-.91 4.3.11.83.6 1.48 1.5 1.83 2.53-1.8.84-1.74 3.42.06 4.36-.35 1.05-.88 2.1-1.61 3.22zM12 8.6c-.1-2.22 1.6-4.14 3.74-4.22.1 2.44-2.15 4.34-3.74 4.22z" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </form>
-          </div>
-
-          <div className={styles.dividerVertical}></div>
-
-          <div className={styles.right}>
-            <div className={styles.qrCard}>
-              <div className={styles.qrContainer}>
-                {qrLoading ? (
-                  <div className={styles.qrPlaceholder}>正在加载...</div>
-                ) : (
-                  <img src={qrUrl} alt="微信扫码登录" className={styles.qrCode} />
-                )}
-              </div>
+            <div className={styles.footer}>
+              <p key={mode} className={styles.footerText}>
+                {mode === 'login'
+                  ? '没有账号？切换到注册即可创建新账号。'
+                  : '注册即表示你同意平台的基础使用条款与隐私约定。'}
+              </p>
             </div>
-
-            <div className={styles.qrTip}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--color-success)">
-                <path d="M8.22 13.41c0-.4.32-.73.73-.73s.73.33.73.73c0 .4-.33.73-.73.73s-.73-.33-.73-.73zm4.61 0c0-.4.33-.73.73-.73s.73.33.73.73c0 .4-.33.73-.73.73s-.73-.33-.73-.73zm6.31-5.18C15.68 5.76 11.4 5.76 7.94 8.23c-3.66 2.62-3.83 6.84-1.04 9.68l.21.21-.49 1.48 1.83-.81.33.15c1.07.49 2.22.75 3.39.75.54 0 1.07-.06 1.6-.17-.18-.38-.28-.8-.28-1.24 0-2.42 2.22-4.38 4.95-4.38.25 0 .5.02.75.05.01-.24.01-.48.01-.72zm-8.62-2.1c0-.4.32-.73.73-.73s.73.33.73.73c0 .4-.33.73-.73.73s-.73-.33-.73-.73zm4.61 0c0-.4.33-.73.73-.73s.73.33.73.73c0 .4-.33.73-.73.73s-.73-.33-.73-.73zm7.64 8.16c0-1.92-1.76-3.48-3.92-3.48s-3.92 1.56-3.92 3.48c0 1.92 1.76 3.48 3.92 3.48.45 0 .89-.07 1.3-.2l1.45.64-.39-1.18c.95-.67 1.56-1.74 1.56-2.74z" />
-              </svg>
-              <span>微信扫码登录</span>
-            </div>
-          </div>
-        </div>
-      </div>
+          </form>
+        </section>
+      </main>
     </div>
   );
 };
