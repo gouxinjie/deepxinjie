@@ -4,13 +4,14 @@ import axios, {
   type InternalAxiosRequestConfig,
 } from 'axios';
 
+import { useAuthStore } from '../store/authStore';
 import type {
   ApiResponse,
-  AuthUser,
+  AuthSessionData,
   ChatStreamChunk,
   CreateSessionData,
+  CurrentUserData,
   DeleteMessagesData,
-  LoginData,
   LoginPayload,
   MessageListData,
   QrCodeData,
@@ -19,47 +20,160 @@ import type {
   SessionListData,
 } from '../types/api';
 
+interface ApiDetailResponse {
+  /** FastAPI 默认错误详情 */
+  detail?: string;
+}
+
+interface RetryableRequestConfig extends InternalAxiosRequestConfig {
+  /** 是否已经执行过一次刷新重试 */
+  _retry?: boolean;
+}
+
+interface SendChatStreamOptions {
+  /** 发送请求体 */
+  payload: SendMessagePayload;
+  /** 分片回调 */
+  onChunk: (chunk: ChatStreamChunk) => void;
+  /** 连接建立回调 */
+  onOpen?: () => void;
+  /** 中断控制器信号 */
+  signal?: AbortSignal;
+}
+
 const api = axios.create({
   baseURL: '/api',
+  withCredentials: true,
 });
+
+const authClient = axios.create({
+  baseURL: '/api',
+  withCredentials: true,
+});
+
+const AUTH_RETRY_EXCLUDED_URLS = [
+  '/auth/login',
+  '/auth/refresh',
+  '/auth/logout',
+  '/auth/qrcode',
+  '/auth/qrcode/status',
+  '/auth/wechat/callback',
+] as const;
+
+const CSRF_COOKIE_NAME = 'csrf_token';
+const CSRF_HEADER_NAME = 'X-CSRF-Token';
+
+let refreshPromise: Promise<string | null> | null = null;
+
+/**
+ * 判断当前请求是否不应触发自动刷新。
+ * @param url - 请求地址
+ * @returns 是否跳过自动刷新
+ */
+const shouldSkipAuthRetry = (url?: string): boolean => {
+  if (!url) {
+    return false;
+  }
+
+  return AUTH_RETRY_EXCLUDED_URLS.some((path) => url.includes(path));
+};
+
+/**
+ * 从浏览器 Cookie 中读取指定值。
+ * @param name - Cookie 名称
+ * @returns Cookie 值，不存在时返回 null
+ */
+const getCookieValue = (name: string): string | null => {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  const prefix = `${name}=`;
+  const cookieItem = document.cookie
+    .split('; ')
+    .find((item) => item.startsWith(prefix));
+
+  if (!cookieItem) {
+    return null;
+  }
+
+  return decodeURIComponent(cookieItem.slice(prefix.length));
+};
+
+/**
+ * 读取当前 CSRF Token。
+ * @returns CSRF Token，不存在时返回 null
+ */
+const getCsrfToken = (): string | null => getCookieValue(CSRF_COOKIE_NAME);
+
+/**
+ * 给请求头附加 Bearer Token 和 CSRF Token。
+ * @param config - axios 请求配置
+ * @param attachBearer - 是否附加 Bearer Token
+ * @returns 处理后的请求配置
+ */
+const attachRequestHeaders = (
+  config: InternalAxiosRequestConfig,
+  attachBearer: boolean,
+): InternalAxiosRequestConfig => {
+  const headers = AxiosHeaders.from(config.headers);
+  const csrfToken = getCsrfToken();
+
+  if (attachBearer) {
+    const token = getAuthToken();
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+  }
+
+  if (csrfToken) {
+    headers.set(CSRF_HEADER_NAME, csrfToken);
+  }
+
+  config.headers = headers;
+  config.withCredentials = true;
+  return config;
+};
 
 /**
  * 读取当前登录 Token。
  */
-export const getAuthToken = (): string | null => localStorage.getItem('token');
+export const getAuthToken = (): string | null => useAuthStore.getState().accessToken;
 
 /**
- * 持久化登录态。
- * @param token - 登录令牌
- * @param user - 登录用户信息
+ * 应用新的登录会话。
+ * @param session - 登录会话数据
  */
-export const persistAuthSession = (token: string, user: AuthUser): void => {
-  localStorage.setItem('token', token);
-  localStorage.setItem('user', JSON.stringify(user));
+export const persistAuthSession = (session: AuthSessionData): void => {
+  useAuthStore.getState().setSession(session.accessToken, session.user);
 };
 
 /**
- * 清理本地登录态。
+ * 清理当前登录会话。
  */
 export const clearAuthSession = (): void => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
+  useAuthStore.getState().clearSession();
 };
 
 /**
- * 获取本地缓存的用户信息。
+ * 跳转到登录页。
  */
-export const getStoredUser = (): AuthUser | null => {
-  const rawUser = localStorage.getItem('user');
-  if (!rawUser) {
-    return null;
+const redirectToLogin = (): void => {
+  if (window.location.pathname !== '/login') {
+    window.location.replace('/login');
   }
+};
 
-  try {
-    return JSON.parse(rawUser) as AuthUser;
-  } catch {
-    localStorage.removeItem('user');
-    return null;
+/**
+ * 统一处理登录凭证失效。
+ * @param shouldRedirect - 是否立即跳转登录页
+ */
+const handleUnauthorized = (shouldRedirect: boolean): void => {
+  clearAuthSession();
+  useAuthStore.getState().setInitialized(true);
+
+  if (shouldRedirect) {
+    redirectToLogin();
   }
 };
 
@@ -69,8 +183,18 @@ export const getStoredUser = (): AuthUser | null => {
  * @returns 可直接展示给用户的中文消息
  */
 export const extractApiErrorMessage = (error: unknown): string => {
-  if (axios.isAxiosError<ApiResponse<unknown>>(error)) {
-    return error.response?.data?.message || error.message || '请求失败，请稍后重试';
+  if (axios.isAxiosError<ApiResponse<unknown> | ApiDetailResponse>(error)) {
+    const responseData = error.response?.data;
+
+    if (responseData && 'message' in responseData && typeof responseData.message === 'string') {
+      return responseData.message;
+    }
+
+    if (responseData && 'detail' in responseData && typeof responseData.detail === 'string') {
+      return responseData.detail;
+    }
+
+    return error.message || '请求失败，请稍后重试';
   }
 
   if (error instanceof Error) {
@@ -81,26 +205,132 @@ export const extractApiErrorMessage = (error: unknown): string => {
 };
 
 /**
- * 给所有 axios 请求自动附加 Bearer Token。
+ * 自动刷新 Access Token。
+ * @returns 刷新后的 Access Token，失败时返回 null
  */
-api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  const token = getAuthToken();
-  const headers = AxiosHeaders.from(config.headers);
-
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
+export const refreshAuthSession = async (): Promise<string | null> => {
+  if (refreshPromise) {
+    return refreshPromise;
   }
 
-  config.headers = headers;
-  return config;
-});
+  refreshPromise = (async () => {
+    try {
+      const response = await authClient.post<ApiResponse<AuthSessionData>>('/auth/refresh');
+      if (!response.data.success) {
+        handleUnauthorized(false);
+        return null;
+      }
+
+      persistAuthSession(response.data.data);
+      return response.data.data.accessToken;
+    } catch {
+      handleUnauthorized(false);
+      return null;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+};
+
+/**
+ * 应用启动时恢复登录态。
+ */
+export const initializeAuthSession = async (): Promise<void> => {
+  const authState = useAuthStore.getState();
+  if (authState.initialized || authState.bootstrapping) {
+    return;
+  }
+
+  authState.setBootstrapping(true);
+  try {
+    await refreshAuthSession();
+  } finally {
+    const latestState = useAuthStore.getState();
+    latestState.setBootstrapping(false);
+    latestState.setInitialized(true);
+  }
+};
+
+/**
+ * 退出当前登录会话。
+ */
+export const logoutAuthSession = async (): Promise<void> => {
+  try {
+    await authApi.logout();
+  } catch {
+    // 退出登录以本地清理为兜底，接口失败不阻塞前端状态回收。
+  }
+
+  handleUnauthorized(false);
+};
+
+/**
+ * 给业务请求附加 Bearer Token 和 CSRF Token。
+ */
+api.interceptors.request.use((config: InternalAxiosRequestConfig) =>
+  attachRequestHeaders(config, true),
+);
+
+/**
+ * 给认证请求附加 CSRF Token。
+ */
+authClient.interceptors.request.use((config: InternalAxiosRequestConfig) =>
+  attachRequestHeaders(config, false),
+);
+
+/**
+ * 统一处理 401，先尝试刷新，再决定是否回到登录页。
+ */
+api.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError<ApiResponse<unknown> | ApiDetailResponse>) => {
+    const originalRequest = error.config as RetryableRequestConfig | undefined;
+    const statusCode = error.response?.status;
+
+    if (statusCode !== 401 || !originalRequest) {
+      return Promise.reject(error);
+    }
+
+    if (originalRequest._retry || shouldSkipAuthRetry(originalRequest.url)) {
+      handleUnauthorized(true);
+      return Promise.reject(error);
+    }
+
+    originalRequest._retry = true;
+    const nextToken = await refreshAuthSession();
+    if (!nextToken) {
+      handleUnauthorized(true);
+      return Promise.reject(error);
+    }
+
+    const headers = AxiosHeaders.from(originalRequest.headers);
+    headers.set('Authorization', `Bearer ${nextToken}`);
+
+    const csrfToken = getCsrfToken();
+    if (csrfToken) {
+      headers.set(CSRF_HEADER_NAME, csrfToken);
+    }
+
+    originalRequest.headers = headers;
+    originalRequest.withCredentials = true;
+
+    return api(originalRequest);
+  },
+);
 
 export const authApi = {
   /**
    * 手机号密码登录。
    * @param data - 登录参数
    */
-  login: (data: LoginPayload) => api.post<ApiResponse<LoginData>>('/auth/login', data),
+  login: (data: LoginPayload) => api.post<ApiResponse<AuthSessionData>>('/auth/login', data),
+
+  /**
+   * 获取当前登录用户信息。
+   */
+  me: () => api.get<ApiResponse<CurrentUserData>>('/auth/me'),
 
   /**
    * 获取微信登录二维码。
@@ -112,7 +342,9 @@ export const authApi = {
    * @param sceneStr - 二维码场景值
    */
   checkStatus: (sceneStr: string) =>
-    api.get<ApiResponse<QrCodeStatusData>>(`/auth/qrcode/status?scene_str=${encodeURIComponent(sceneStr)}`),
+    api.get<ApiResponse<QrCodeStatusData>>(
+      `/auth/qrcode/status?scene_str=${encodeURIComponent(sceneStr)}`,
+    ),
 
   /**
    * 退出登录。
@@ -145,7 +377,8 @@ export const sessionApi = {
    * 切换会话置顶状态。
    * @param sessionId - 会话 ID
    */
-  pin: (sessionId: number) => api.put<ApiResponse<{ is_pinned: number }>>(`/chat/sessions/${sessionId}/pin`),
+  pin: (sessionId: number) =>
+    api.put<ApiResponse<{ is_pinned: number }>>(`/chat/sessions/${sessionId}/pin`),
 
   /**
    * 删除会话。
@@ -181,16 +414,29 @@ export const messageApi = {
     api.put<ApiResponse<null>>(`/chat/messages/${messageId}`, { content }),
 };
 
-interface SendChatStreamOptions {
-  /** 发送请求体 */
-  payload: SendMessagePayload;
-  /** 分片回调 */
-  onChunk: (chunk: ChatStreamChunk) => void;
-  /** 连接建立回调 */
-  onOpen?: () => void;
-  /** 中断控制器信号 */
-  signal?: AbortSignal;
-}
+/**
+ * 构造聊天流请求。
+ * @param accessToken - 当前 Access Token
+ * @param payload - 发送请求体
+ * @param signal - 中断控制器信号
+ * @returns 原始 fetch 响应
+ */
+const requestChatStream = async (
+  accessToken: string,
+  payload: SendMessagePayload,
+  signal?: AbortSignal,
+): Promise<Response> => {
+  return fetch('/api/chat/send', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+    signal,
+  });
+};
 
 /**
  * 通过 fetch + POST 接入受鉴权保护的流式聊天接口。
@@ -205,29 +451,45 @@ export const sendChatStream = async ({
   onOpen,
   signal,
 }: SendChatStreamOptions): Promise<void> => {
-  const token = getAuthToken();
+  let token = getAuthToken();
   if (!token) {
+    token = await refreshAuthSession();
+  }
+
+  if (!token) {
+    handleUnauthorized(true);
     throw new Error('未登录或登录已过期');
   }
 
-  const response = await fetch('/api/chat/send', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(payload),
-    signal,
-  });
+  let response = await requestChatStream(token, payload, signal);
+  if (response.status === 401) {
+    const refreshedToken = await refreshAuthSession();
+    if (!refreshedToken) {
+      handleUnauthorized(true);
+      throw new Error('未登录或登录已过期');
+    }
+
+    response = await requestChatStream(refreshedToken, payload, signal);
+  }
 
   if (!response.ok) {
     try {
-      const errorData = (await response.json()) as ApiResponse<unknown>;
-      throw new Error(errorData.message || '发送消息失败');
+      const errorData = (await response.json()) as ApiResponse<unknown> | ApiDetailResponse;
+
+      if ('message' in errorData && typeof errorData.message === 'string') {
+        throw new Error(errorData.message);
+      }
+
+      if ('detail' in errorData && typeof errorData.detail === 'string') {
+        throw new Error(errorData.detail);
+      }
+
+      throw new Error('发送消息失败');
     } catch (error) {
       if (error instanceof Error && error.message !== 'Unexpected end of JSON input') {
         throw error;
       }
+
       throw new Error(`发送消息失败（HTTP ${response.status}）`);
     }
   }

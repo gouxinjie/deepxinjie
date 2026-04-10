@@ -3,7 +3,7 @@
  * @description 会话侧边栏组件，负责展示会话列表、重命名、删除、置顶和登录入口
  * @author gouxinjie
  * @created 2026-03-16
- * @updated 2026-04-08
+ * @updated 2026-04-10
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -24,19 +24,14 @@ import {
 import classNames from 'classnames';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
+import { extractApiErrorMessage, logoutAuthSession, sessionApi } from '../../services/api';
+import { useAuthStore } from '../../store/authStore';
+import { useThemeStore } from '../../store/themeStore';
+import type { AuthUser, SessionItem } from '../../types/api';
 import styles from './ChatSidebar.module.scss';
 import DeepXinjieLogo from '../DeepXinjieLogo';
 import LoginModal from '../commons/LoginModal';
 import Modal from '../commons/Modal';
-import {
-  authApi,
-  clearAuthSession,
-  extractApiErrorMessage,
-  getStoredUser,
-  sessionApi,
-} from '../../services/api';
-import { useThemeStore } from '../../store/themeStore';
-import type { AuthUser, SessionItem } from '../../types/api';
 
 interface ChatSidebarProps {
   /** 移动端侧边栏是否展开 */
@@ -115,7 +110,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, onToggleColl
   const [editTitle, setEditTitle] = useState('');
   const [menuOpenId, setMenuOpenId] = useState<number | null>(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [user, setUser] = useState<AuthUser | null>(() => getStoredUser());
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
@@ -125,6 +119,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, onToggleColl
 
   const navigate = useNavigate();
   const location = useLocation();
+  const user = useAuthStore((state) => state.user);
   const { theme, toggleTheme } = useThemeStore();
 
   const pathParts = location.pathname.split('/');
@@ -294,14 +289,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, onToggleColl
    * 退出登录。
    */
   const handleLogout = async () => {
-    try {
-      await authApi.logout();
-    } catch {
-      // 退出登录以本地清理为主，这里忽略接口失败。
-    }
-
-    clearAuthSession();
-    setUser(null);
+    await logoutAuthSession();
     setUserMenuOpen(false);
     setSessions([]);
     showToast('已退出登录', 'success');
@@ -309,11 +297,9 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, onToggleColl
   };
 
   /**
-   * 登录成功后同步用户信息和会话列表。
-   * @param userData - 登录用户
+   * 登录成功后同步会话列表。
    */
-  const handleLoginSuccess = (userData: AuthUser) => {
-    setUser(userData);
+  const handleLoginSuccess = () => {
     setShowLoginModal(false);
     showToast('登录成功', 'success');
     void fetchSessions();
@@ -369,12 +355,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, onToggleColl
    */
   const renderAvatar = (currentUser: AuthUser) => {
     if (currentUser.avatar) {
-      return (
-        <img
-          src={currentUser.avatar}
-          alt="avatar"
-        />
-      );
+      return <img src={currentUser.avatar} alt="avatar" />;
     }
 
     return (

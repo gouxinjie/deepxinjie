@@ -3,14 +3,13 @@
  * @description 微信扫码登录弹窗组件，负责拉取二维码、轮询状态并回写登录态
  * @author gouxinjie
  * @created 2026-03-16
- * @updated 2026-04-08
+ * @updated 2026-04-10
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 
-import styles from './index.module.scss';
 import { authApi, extractApiErrorMessage, persistAuthSession } from '../../../services/api';
-import type { AuthUser } from '../../../types/api';
+import styles from './index.module.scss';
 
 interface LoginModalProps {
   /** 是否显示弹窗 */
@@ -18,7 +17,7 @@ interface LoginModalProps {
   /** 关闭弹窗回调 */
   onClose: () => void;
   /** 登录成功回调 */
-  onSuccess: (user: AuthUser) => void;
+  onSuccess: () => void;
 }
 
 const LoginModal: React.FC<LoginModalProps> = ({ visible, onClose, onSuccess }) => {
@@ -77,14 +76,18 @@ const LoginModal: React.FC<LoginModalProps> = ({ visible, onClose, onSuccess }) 
           return;
         }
 
-        const { token, user } = response.data.data;
-        if (!token || !user) {
+        const { accessToken, user } = response.data.data;
+        if (!accessToken || !user) {
           return;
         }
 
-        persistAuthSession(token, user);
+        persistAuthSession({
+          accessToken,
+          expiresIn: response.data.data.expiresIn || 0,
+          user,
+        });
         stopPolling();
-        onSuccess(user);
+        onSuccess();
       } catch (requestError) {
         setError(extractApiErrorMessage(requestError));
       }

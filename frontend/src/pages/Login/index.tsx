@@ -3,15 +3,15 @@
  * @description 登录页面组件，负责处理手机号登录与微信扫码登录流程
  * @author gouxinjie
  * @created 2026-03-16
- * @updated 2026-04-08
+ * @updated 2026-04-10
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-import styles from './index.module.scss';
 import DeepXinjieLogo from '../../components/DeepXinjieLogo';
 import { authApi, extractApiErrorMessage, persistAuthSession } from '../../services/api';
+import styles from './index.module.scss';
 
 const LoginPage: React.FC = () => {
   const [phone, setPhone] = useState('');
@@ -24,7 +24,7 @@ const LoginPage: React.FC = () => {
   const navigate = useNavigate();
 
   /**
-   * 页面初始化时加载微信二维码。
+   * 页面初始化时拉取微信二维码。
    */
   useEffect(() => {
     void fetchQrCode();
@@ -68,12 +68,16 @@ const LoginPage: React.FC = () => {
           return;
         }
 
-        const { token, user } = response.data.data;
-        if (!token || !user) {
+        const { accessToken, user } = response.data.data;
+        if (!accessToken || !user) {
           return;
         }
 
-        persistAuthSession(token, user);
+        persistAuthSession({
+          accessToken,
+          expiresIn: response.data.data.expiresIn || 0,
+          user,
+        });
         stopPolling();
         navigate('/');
       } catch (requestError) {
@@ -118,7 +122,7 @@ const LoginPage: React.FC = () => {
         return;
       }
 
-      persistAuthSession(response.data.data.token, response.data.data.user);
+      persistAuthSession(response.data.data);
       navigate('/');
     } catch (requestError) {
       setError(extractApiErrorMessage(requestError));

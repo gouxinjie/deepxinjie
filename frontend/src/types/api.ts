@@ -2,7 +2,7 @@
  * @description 前后端接口通用类型定义
  * @author
  * @created 2026-04-07
- * @updated 2026-04-07
+ * @updated 2026-04-10
  */
 
 /**
@@ -41,7 +41,7 @@ export interface ApiErrorResponse {
 export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
 
 /**
- * 用户角色消息类型。
+ * 消息角色类型。
  */
 export type MessageRole = 'user' | 'assistant';
 
@@ -86,11 +86,21 @@ export interface LoginPayload {
 }
 
 /**
- * 登录成功数据。
+ * 认证成功后的会话数据。
  */
-export interface LoginData {
-  /** JWT 登录令牌 */
-  token: string;
+export interface AuthSessionData {
+  /** 短效 Access Token */
+  accessToken: string;
+  /** Access Token 剩余有效秒数 */
+  expiresIn: number;
+  /** 当前登录用户 */
+  user: AuthUser;
+}
+
+/**
+ * 当前登录用户信息数据。
+ */
+export interface CurrentUserData {
   /** 当前登录用户 */
   user: AuthUser;
 }
@@ -111,8 +121,10 @@ export interface QrCodeData {
 export interface QrCodeStatusData {
   /** 轮询状态 */
   status?: number;
-  /** 登录令牌 */
-  token?: string;
+  /** 短效 Access Token */
+  accessToken?: string;
+  /** Access Token 剩余有效秒数 */
+  expiresIn?: number;
   /** 当前登录用户 */
   user?: AuthUser;
 }

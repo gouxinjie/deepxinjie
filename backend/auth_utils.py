@@ -12,10 +12,9 @@ load_dotenv()
 def get_required_env(name: str) -> str:
     """
     获取必填环境变量。
-
     说明：
-    - 对密码、密钥这类敏感配置不允许提供默认值。
-    - 若缺失则在服务启动阶段直接失败，避免带着不安全配置运行。
+    - 敏感配置禁止在代码中提供默认值。
+    - 缺失时在服务启动阶段直接失败，避免带着不安全配置运行。
     """
     value = os.getenv(name)
     if not value:
@@ -30,15 +29,9 @@ JWT_ALGORITHM = "HS256"
 def get_current_user_id(authorization: Optional[str] = Header(default=None)) -> int:
     """
     从请求头中解析当前登录用户 ID。
-
-    参数：
-    - authorization: 请求头中的 Bearer Token。
-
-    返回：
-    - 当前登录用户的整数 ID。
-
-    异常：
-    - 当缺少 Token、Token 格式错误、已过期或无法解析时抛出 401。
+    @param authorization - 请求头中的 Bearer Token
+    @returns 当前登录用户的整数 ID
+    @throws HTTPException 当缺少 Token、Token 无效或已过期时抛出 401
     """
     if not authorization:
         raise HTTPException(
@@ -65,6 +58,13 @@ def get_current_user_id(authorization: Optional[str] = Header(default=None)) -> 
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="无效的登录凭证",
         ) from exc
+
+    token_type = payload.get("token_type")
+    if token_type != "access":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="无效的登录凭证",
+        )
 
     user_id = payload.get("user_id")
     if user_id is None:

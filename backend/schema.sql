@@ -65,3 +65,18 @@ CREATE TABLE IF NOT EXISTS verify_code (
     expire_time DATETIME NOT NULL,
     create_time DATETIME DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS user_session (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    refresh_token_hash VARCHAR(64) NOT NULL UNIQUE COMMENT 'Refresh Token 哈希值',
+    csrf_token_hash VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'CSRF Token 哈希值',
+    status TINYINT DEFAULT 1 COMMENT '1-有效 0-失效',
+    expire_time DATETIME NOT NULL COMMENT 'Refresh Token 过期时间',
+    ip_address VARCHAR(64) DEFAULT '' COMMENT '最近登录 IP',
+    user_agent VARCHAR(255) DEFAULT '' COMMENT '最近登录设备标识',
+    last_active_time DATETIME DEFAULT NOW() COMMENT '最后活跃时间',
+    create_time DATETIME DEFAULT NOW() COMMENT '创建时间',
+    update_time DATETIME DEFAULT NOW() ON UPDATE NOW() COMMENT '更新时间',
+    FOREIGN KEY (user_id) REFERENCES user(id)
+);
