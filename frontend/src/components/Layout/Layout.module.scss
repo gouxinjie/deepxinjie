@@ -13,7 +13,7 @@
   z-index: 20;
   transition: width 0.3s ease;
   width: 260px;
-  min-width: 0; /* Fix flex item not shrinking below content width */
+  min-width: 0;
   flex-shrink: 0;
   overflow: hidden;
 
@@ -108,23 +108,19 @@
   }
 }
 
-/* 移动端样式适配 */
+/* 移动端布局适配 */
 @media (max-width: 750px) {
   .sidebarWrapper {
     position: fixed;
     left: 0;
     top: 0;
     bottom: 0;
-    width: 0;
+    width: 280px;
     z-index: 1000;
-    pointer-events: none; // 确保不拦截点击
+    pointer-events: none;
 
-    & > * {
-      pointer-events: auto; // 恢复内部元素的点击
-    }
-
-    &:not(.hidden) {
-      width: 0; // 移动端不再通过 sidebarWrapper 控制宽度
+    &.mobileVisible {
+      pointer-events: auto;
     }
   }
 

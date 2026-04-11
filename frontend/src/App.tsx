@@ -5,42 +5,47 @@ import ChatMain from './components/Chat/ChatMain';
 import ChatSidebar from './components/Chat/ChatSidebar';
 import Layout from './components/Layout/Layout';
 import styles from './App.module.scss';
+import useMobile from './hooks/useMobile';
 import LoginPage from './pages/Login';
 import { initializeAuthSession } from './services/api';
 import { useAuthStore } from './store/authStore';
 import { useThemeStore } from './store/themeStore';
 
+const MOBILE_SIDEBAR_TRANSITION_MS = 300;
+
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarLayerActive, setIsSidebarLayerActive] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { theme } = useThemeStore();
   const location = useLocation();
+  const isMobile = useMobile();
   const initialized = useAuthStore((state) => state.initialized);
   const bootstrapping = useAuthStore((state) => state.bootstrapping);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   /**
-   * 监听主题变化并同步到 html 标签。
+   * 同步主题到根节点。
    */
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
   /**
-   * 应用启动时尝试从 Refresh Token 恢复登录态。
+   * 应用启动时恢复登录态。
    */
   useEffect(() => {
     void initializeAuthSession();
   }, []);
 
   /**
-   * 从 localStorage 加载初始状态，如果没有则默认为 false。
+   * 从本地存储恢复聊天开关状态。
    */
   const [isDeepThink, setIsDeepThink] = useState(() => localStorage.getItem('isDeepThink') === 'true');
   const [isSearch, setIsSearch] = useState(() => localStorage.getItem('isSearch') === 'true');
 
   /**
-   * 持久化深度思考和联网搜索状态。
+   * 持久化深度思考与联网搜索状态。
    */
   useEffect(() => {
     localStorage.setItem('isDeepThink', isDeepThink.toString());
@@ -49,6 +54,29 @@ function App() {
   useEffect(() => {
     localStorage.setItem('isSearch', isSearch.toString());
   }, [isSearch]);
+
+  /**
+   * 管理移动端侧边栏交互层生命周期，避免关闭动画期间点击穿透。
+   */
+  useEffect(() => {
+    if (!isMobile) {
+      setIsSidebarLayerActive(false);
+      return undefined;
+    }
+
+    if (isSidebarOpen) {
+      setIsSidebarLayerActive(true);
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setIsSidebarLayerActive(false);
+    }, MOBILE_SIDEBAR_TRANSITION_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [isMobile, isSidebarOpen]);
 
   if (!initialized || bootstrapping) {
     return <div className={styles.app} />;
@@ -73,10 +101,12 @@ function App() {
         sidebar={
           <ChatSidebar
             isOpen={isSidebarOpen}
+            showOverlay={isMobile && isSidebarLayerActive}
             onClose={() => setIsSidebarOpen(false)}
             onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
           />
         }
+        isSidebarInteractive={isMobile ? isSidebarLayerActive : true}
         isCollapsed={isCollapsed}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         onToggleCollapse={() => setIsCollapsed(!isCollapsed)}

@@ -36,6 +36,7 @@ import Modal from '../commons/Modal';
 interface ChatSidebarProps {
   /** 移动端侧边栏是否展开 */
   isOpen: boolean;
+  showOverlay: boolean;
   /** 关闭侧边栏 */
   onClose: () => void;
   /** 桌面端切换折叠 */
@@ -104,7 +105,7 @@ const getAvatarStyle = (nickname: string): React.CSSProperties => {
   };
 };
 
-const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, onToggleCollapse }) => {
+const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose, onToggleCollapse }) => {
   const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState('');
@@ -161,7 +162,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, onToggleColl
   }, [toast]);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: PointerEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setMenuOpenId(null);
       }
@@ -171,8 +172,8 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, onToggleColl
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('pointerdown', handleClickOutside);
+    return () => document.removeEventListener('pointerdown', handleClickOutside);
   }, []);
 
   useEffect(() => {
@@ -455,7 +456,12 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, onToggleColl
 
   return (
     <>
-      <div className={classNames(styles.overlay, { [styles.visible]: isOpen })} onClick={onClose} />
+      {showOverlay && (
+        <div
+          className={classNames(styles.overlay, styles.blocking, { [styles.visible]: isOpen })}
+          onClick={onClose}
+        />
+      )}
 
       <div className={classNames(styles.sidebar, { [styles.open]: isOpen })}>
         <div className={styles.header}>
@@ -469,7 +475,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, onToggleColl
               <PanelLeftClose size={20} strokeWidth={1.5} />
             </button>
             <button className={styles.closeBtn} onClick={onClose} title="关闭侧边栏">
-              <X size={24} strokeWidth={1.5} />
+              <PanelLeftClose size={20} strokeWidth={1.5} />
             </button>
           </div>
         </div>

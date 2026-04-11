@@ -923,12 +923,14 @@ const ChatMain: React.FC<ChatMainProps> = ({
 
       {citationPanelState && (
         <>
-          <button
-            type="button"
-            className={styles.panelBackdrop}
-            onClick={handleCloseCitations}
-            aria-label={'\u5173\u95ed\u6765\u6e90\u4fa7\u680f\u906e\u7f69'}
-          />
+          {isCitationPanelVisible && (
+            <button
+              type="button"
+              className={styles.panelBackdrop}
+              onClick={handleCloseCitations}
+              aria-label={'\u5173\u95ed\u6765\u6e90\u4fa7\u680f\u906e\u7f69'}
+            />
+          )}
           <ChatCitationPanel
             visible={isCitationPanelVisible}
             citations={citationPanelState.citations || []}
