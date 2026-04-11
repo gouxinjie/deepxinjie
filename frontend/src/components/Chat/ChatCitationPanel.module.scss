@@ -134,7 +134,7 @@
 }
 
 .citationTitle {
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.42;
   color: $color-text-main;
   font-weight: $font-weight-semibold;
@@ -231,7 +231,7 @@
     height: min(84vh, 760px);
     border-left: none;
     border-top: 1px solid rgba(15, 23, 42, 0.08);
-    border-radius: $radius-3xl $radius-3xl 0 0;
+    border-radius: $radius-xl $radius-xl 0 0;
     transform: translateY(calc(100% + 24px)) scale(0.98);
     transform-origin: center bottom;
     transition:
@@ -249,5 +249,9 @@
 
   .citationItem {
     padding: 14px;
+  }
+
+  .citationSnippet {
+    -webkit-line-clamp: 2;
   }
 }

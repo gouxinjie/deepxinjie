@@ -1,38 +1,49 @@
 # DeepXinjie
 
-一个前后端分离的 AI 聊天项目，前端基于 `React 19 + TypeScript + Vite`，后端基于 `FastAPI + MySQL`。
+一个前后端分离的 AI 聊天项目，前端基于 `React 19 + TypeScript + Vite`，后端基于 `FastAPI + MySQL`，整体产品形态参考企业级 AI 聊天网站。
 
 当前版本已经完成以下核心能力：
+
 - 账号密码注册与登录
-- 基于 Access Token + Refresh Token 的会话续期
-- 会话列表、重命名、置顶、删除
-- 流式聊天输出
-- 深度思考模式
-- 联网搜索与来源展示
+- 基于 `Access Token + Refresh Token` 的登录态恢复与会话续期
+- `CSRF Token` 校验与受保护接口访问
+- 会话管理：新建、历史列表、重命名、置顶、删除
+- 流式聊天输出与中断生成
+- 深度思考模式切换
+- 联网搜索与来源侧边栏展示
 - 用户消息编辑后重新生成
 - 基于上一轮消息继续生成
+- 桌面端与移动端双端适配
+- 移动端侧边栏、来源面板等交互细节优化
 
-## 认证改造说明
+## 项目截图
 
-当前仓库已经移除以下登录方式：
-- 微信扫码登录
-- 短信验证码登录
-- 未注册手机号自动注册
+### PC 端
 
-当前仅支持标准账号体系：
-- 登录：`手机号账号 + 密码`
-- 注册：`手机号账号 + 用户名 + 密码`
+![](./doc/images/1-1.png)
 
-同时保留了已有账号、会话和消息数据，不会因为这次改造被清理。
+---
 
-## 登录页说明
+![](./doc/images/1-2.png)
 
-登录页已改成更接近 Claude / ChatGPT 的极简单卡片风格：
-- 居中单卡片布局
-- 登录 / 注册切换支持过渡动画
-- 注册态用户名输入区使用折叠展开方式
-- 小高度窗口下会自动收紧垂直间距，避免卡片底部超出窗口
-- 主按钮已调整为项目主题蓝风格
+---
+
+![](./doc/images/1-3.png)
+
+---
+
+![](./doc/images/1-4.png)
+
+### 移动端
+
+<table>
+  <tr>
+    <td align="center"><img src="./doc/images/2-1.png" width="200"></td>
+    <td align="center"><img src="./doc/images/2-2.png" width="200"></td>
+    <td align="center"><img src="./doc/images/2-3.png" width="200"></td>
+    <td align="center"><img src="./doc/images/2-4.png" width="200"></td>
+  </tr>
+</table>
 
 ## 技术栈
 
@@ -67,7 +78,7 @@
 .
 ├─ backend/                      # FastAPI 后端
 │  ├─ main.py                    # 应用入口
-│  ├─ db.py                      # MySQL 连接池
+│  ├─ db.py                      # MySQL 连接工具
 │  ├─ auth_utils.py              # JWT 鉴权工具
 │  ├─ init_db.py                 # 数据库初始化脚本
 │  ├─ schema.sql                 # 数据库结构
@@ -132,10 +143,11 @@ COOKIE_SAMESITE=lax
 ```
 
 说明：
+
 - `DB_PASSWORD` 和 `JWT_SECRET` 缺失时，后端会在启动阶段直接报错。
-- `ACCESS_TOKEN_EXPIRE_MINUTES` 控制短效 Access Token 时长。
-- `REFRESH_TOKEN_EXPIRE_DAYS` 控制 Refresh Token 会话时长。
-- `COOKIE_SECURE=true` 时要求 HTTPS 环境。
+- `ACCESS_TOKEN_EXPIRE_MINUTES` 控制短效 `Access Token` 时长。
+- `REFRESH_TOKEN_EXPIRE_DAYS` 控制 `Refresh Token` 会话时长。
+- `COOKIE_SECURE=true` 时要求使用 HTTPS 环境。
 
 ## 数据库初始化
 
@@ -154,6 +166,7 @@ python seed_user.py
 ```
 
 当前核心表：
+
 - `user`
 - `user_session`
 - `chat_session`
@@ -220,11 +233,12 @@ npm run preview
 - 前端将 `accessToken` 保存在 Zustand 内存状态中
 - 页面刷新后，前端会自动调用 `/api/auth/refresh` 恢复登录态
 - `refresh_token` 不暴露给前端 JavaScript，主要用于续期
-- `csrf_token` 用于前端回填请求头，配合后端做 CSRF 校验
+- `csrf_token` 用于前端回填请求头，配合后端进行 `CSRF` 校验
 
 说明：
-- 关闭标签页或刷新页面不会直接丢失登录态，只要 Refresh 会话未过期即可恢复。
-- 是否在关闭浏览器后仍保留登录态，取决于 Cookie 生命周期和浏览器本身的会话策略；当前实现按 `max_age` 持久化 Refresh 会话。
+
+- 关闭标签页或刷新页面不会直接丢失登录态，只要 `Refresh Token` 未过期即可恢复。
+- 是否在关闭浏览器后仍保留登录态，取决于 Cookie 生命周期和浏览器本身的会话策略；当前实现按 `max_age` 持久化 `Refresh Token` 会话。
 
 ## 后端接口概览
 
@@ -270,21 +284,22 @@ npm run preview
 ### 前端
 
 - 所有认证相关 API 统一封装在 `frontend/src/services/api.ts`
-- 登录页与登录弹窗都已经切换为账号密码认证模式
+- 登录页与登录弹窗均为账号密码认证模式
 - 流式聊天使用 `fetch + POST` 手动解析 SSE 分片
 - 401 场景下会优先尝试自动刷新登录态
+- 来源侧边栏、移动端侧边栏等交互已做专项适配
 
 ### 后端
 
-- 所有认证响应统一为 `success / code / message / data` 结构
+- 所有认证响应统一使用 `success / code / message / data` 结构
 - 刷新会话保存在 `user_session` 表中
-- Refresh Token 与 CSRF Token 在数据库中以哈希形式保存
+- `Refresh Token` 与 `CSRF Token` 在数据库中以哈希形式保存
 - 登录不再自动注册，必须显式调用注册接口
 
 ## 已知说明
 
 - 当前项目尚未补齐完整自动化测试
-- 前端生产构建仍会出现较大 bundle 提示，但不影响本地开发与基础构建
+- 前端生产构建仍会出现较大的 bundle 提示，但不影响本地开发与基础构建
 - 文件上传表结构已存在，但完整上传链路尚未完全接入
 
 ## 最近验证
@@ -301,6 +316,10 @@ cd frontend
 npm run build
 ```
 
+## 仓库地址
+
+- GitHub：`https://github.com/gouxinjie/deepxinjie`
+
 ## License
 
-本项目采用 `MIT License`，详见 [LICENSE](D:/MyProjects/deepxinjie/LICENSE)。
+本项目采用 `MIT License`，详见 [LICENSE](./LICENSE)。
