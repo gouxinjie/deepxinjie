@@ -483,7 +483,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
 
         <button className={styles.newChatBtn} onClick={handleNewChat}>
           <CirclePlus size={20} strokeWidth={1.5} />
-          <span>新对话</span>
+          <span>开启新对话</span>
         </button>
 
         <div className={styles.history}>
@@ -582,7 +582,10 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
                       [styles.userMenuSwatchActive]: colorScheme === 'blue',
                     })}
                     style={{ '--swatch-color': '#4d6bfe' } as React.CSSProperties}
-                    onClick={() => setColorScheme('blue')}
+                    onClick={() => {
+                      setColorScheme('blue');
+                      showToast('已切换为蓝色主题', 'success');
+                    }}
                     title="蓝色调（经典）"
                     aria-label="切换到蓝色主色"
                     aria-pressed={colorScheme === 'blue'}
@@ -593,7 +596,10 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
                       [styles.userMenuSwatchActive]: colorScheme === 'green',
                     })}
                     style={{ '--swatch-color': '#16915f' } as React.CSSProperties}
-                    onClick={() => setColorScheme('green')}
+                    onClick={() => {
+                      setColorScheme('green');
+                      showToast('已切换为绿色主题', 'success');
+                    }}
                     title="绿色调（默认）"
                     aria-label="切换到绿色主色"
                     aria-pressed={colorScheme === 'green'}

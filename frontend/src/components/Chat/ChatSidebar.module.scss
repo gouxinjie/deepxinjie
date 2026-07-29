@@ -487,39 +487,58 @@
     }
   }
 
-  // 主题色菜单项：文字在左，色点在右
+  // 主题色菜单项：文字在左，色块在右
   &.colorSchemeMenuItem {
     cursor: default;
+    // 抑制父级 .userMenuItem 的 hover 背景色
+    &:hover {
+      background-color: transparent;
+    }
+
+    // 文字不换行
+    > span {
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
   }
 
   .userMenuSwatches {
     @include flex(row, flex-start, center);
-    gap: 8px;
+    gap: 4px;
     margin-left: auto;
+    padding: 2px;
+    flex-shrink: 0;
+    // 色块组整体容器：浅灰底圆角，形成视觉分组
+    background-color: var(--color-bg-secondary);
+    border-radius: 8px;
   }
 
   .userMenuSwatch {
-    width: 16px;
-    height: 16px;
-    border-radius: $radius-round;
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
     background-color: var(--swatch-color);
-    border: 2px solid transparent;
+    border: none;
     cursor: pointer;
-    opacity: 0.65;
     padding: 0;
-    transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+    transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease, border-radius 0.2s ease;
+
+    // 未选中时半透明 + 轻微缩边，形成"退后"感
+    opacity: 0.55;
 
     &:hover {
-      opacity: 0.9;
-      transform: scale(1.1);
+      opacity: 0.8;
+      transform: scale(1.06);
     }
-  }
 
-  .userMenuSwatchActive {
-    opacity: 1;
-    transform: scale(1.12);
-    // 选中态：用背景色隔离 + 当前色描边
-    box-shadow: 0 0 0 2px $color-bg, 0 0 0 3.5px var(--swatch-color);
+    // 选中态：完全饱和 + 微投影 + 白色内环，简洁有力
+    &.userMenuSwatchActive {
+      opacity: 1;
+      box-shadow:
+        0 2px 6px rgba(0, 0, 0, 0.18),
+        inset 0 0 0 2px rgba(255, 255, 255, 0.5);
+    }
   }
 }
 
