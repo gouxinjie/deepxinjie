@@ -17,6 +17,7 @@ import {
   Palette,
   PanelLeftClose,
   Pin,
+  Search,
   Settings,
   Sun,
   Trash2,
@@ -30,6 +31,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useThemeStore } from '../../store/themeStore';
 import type { AuthUser, SessionItem } from '../../types/api';
 import styles from './ChatSidebar.module.scss';
+import ChatSearchDialog from './ChatSearchDialog';
 import DeepXinjieLogo from '../DeepXinjieLogo';
 import LoginModal from '../commons/LoginModal';
 import Modal from '../commons/Modal';
@@ -116,6 +118,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
   const [toast, setToast] = useState<ToastState | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
 
   const menuRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -481,6 +484,9 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
           </div>
 
           <div className={styles.headerActions}>
+            <button className={styles.searchBtn} onClick={() => setShowSearch(true)} title="搜索对话内容">
+              <Search size={20} strokeWidth={1.5} />
+            </button>
             <button className={styles.collapseBtn} onClick={onToggleCollapse} title="收起侧边栏">
               <PanelLeftClose size={20} strokeWidth={1.5} />
             </button>
@@ -653,6 +659,16 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
           visible={showLoginModal}
           onClose={() => setShowLoginModal(false)}
           onSuccess={handleLoginSuccess}
+        />
+
+        <ChatSearchDialog
+          open={showSearch}
+          onOpenChange={setShowSearch}
+          onCloseSidebar={() => {
+            if (window.innerWidth <= 750) {
+              onClose();
+            }
+          }}
         />
       </div>
     </>

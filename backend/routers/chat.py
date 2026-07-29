@@ -1139,6 +1139,105 @@ async def update_message(
         cursor.close()
 
 
+@router.get("/search")
+async def search_conversations(
+    keyword: str = "",
+    limit: int = 20,
+    user_id: int = Depends(get_current_user_id),
+    db: Any = Depends(get_db),
+) -> dict[str, Any]:
+    """
+    搜索当前用户的所有会话标题与消息内容。
+    说明：
+    - 同时搜索会话标题和消息内容
+    - 结果按会话分组，按消息时间倒序排列
+    - 每条结果包含所属会话信息及消息匹配摘要
+    """
+    if not keyword.strip():
+        return build_success_response({"results": []}, "搜索关键词为空")
+
+    keyword_param = f"%{keyword.strip()}%"
+    results: list[dict[str, Any]] = []
+    seen_result_keys: set[str] = set()
+
+    cursor = db.cursor(dictionary=True)
+    try:
+        # 搜索消息内容
+        cursor.execute(
+            """
+            SELECT
+                m.id AS message_id,
+                m.role,
+                m.content,
+                m.create_time,
+                s.id AS session_id,
+                s.title AS session_title
+            FROM chat_message m
+            INNER JOIN chat_session s ON m.session_id = s.id
+            WHERE s.user_id = %s
+              AND s.status = 1
+              AND m.content LIKE %s
+            ORDER BY m.create_time DESC
+            LIMIT %s
+            """,
+            (user_id, keyword_param, limit),
+        )
+        message_results = cursor.fetchall()
+
+        for row in message_results:
+            result_key = f"{row['session_id']}:{row['message_id']}"
+            if result_key in seen_result_keys:
+                continue
+            seen_result_keys.add(result_key)
+
+            preview = str(row["content"] or "")[:200]
+            results.append({
+                "sessionId": row["session_id"],
+                "sessionTitle": row["session_title"],
+                "messageId": row["message_id"],
+                "role": row["role"],
+                "preview": preview,
+                "matchedAt": str(row["create_time"] or ""),
+            })
+
+        # 如果消息搜索结果不足，补充搜索会话标题
+        if len(results) < limit:
+            remaining = limit - len(results)
+            cursor.execute(
+                """
+                SELECT id, title, update_time
+                FROM chat_session
+                WHERE user_id = %s
+                  AND status = 1
+                  AND title LIKE %s
+                  AND id NOT IN (
+                      SELECT DISTINCT session_id FROM chat_message
+                      WHERE content LIKE %s
+                  )
+                ORDER BY update_time DESC
+                LIMIT %s
+                """,
+                (user_id, keyword_param, keyword_param, remaining),
+            )
+            session_results = cursor.fetchall()
+
+            for row in session_results:
+                results.append({
+                    "sessionId": row["id"],
+                    "sessionTitle": row["title"],
+                    "messageId": None,
+                    "role": None,
+                    "preview": "",
+                    "matchedAt": str(row["update_time"] or ""),
+                })
+
+        return build_success_response({"results": results}, "搜索成功")
+    except Exception as exc:
+        return build_error_response(500, f"搜索失败：{exc}")
+    finally:
+        cursor.close()
+
+
 @router.delete("/sessions/{session_id}/messages")
 async def delete_messages(
     session_id: int,

@@ -1,0 +1,263 @@
+/**
+ * 搜索浮层组件样式
+ * 说明：
+ * - 覆盖 @radix-ui/react-dialog 默认弹窗定位
+ * - 顶部搜索框 + 下方结果列表布局
+ * - 支持暗色 & 亮色主题
+ */
+
+@use '../../styles/variables.scss' as *;
+
+// 遮罩层
+.overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  z-index: 2000;
+  animation: overlayFadeIn 0.15s ease-out;
+}
+
+@keyframes overlayFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+// 弹窗容器
+.dialog {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 680px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 160px);
+  background-color: $color-bg;
+  border-radius: $radius-2xl;
+  box-shadow: $shadow-xl;
+  border: 1px solid $color-border-light;
+  z-index: 2001;
+  display: flex;
+  flex-direction: column;
+  animation: dialogSlideIn 0.15s ease-out;
+  overflow: hidden;
+}
+
+@keyframes dialogSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+// 视觉隐藏（用于无障碍标题）
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+// 搜索输入框容器
+.inputWrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  border-bottom: 1px solid $color-border;
+  flex-shrink: 0;
+}
+
+.inputIcon {
+  flex-shrink: 0;
+  color: $color-text-secondary;
+}
+
+.input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: $font-size-lg;
+  background: transparent;
+  color: $color-text-main;
+  line-height: 24px;
+
+  &::placeholder {
+    color: $color-text-tertiary;
+  }
+}
+
+.clearBtn {
+  @include flex-center;
+  width: 28px;
+  height: 28px;
+  border-radius: $radius-full;
+  background: $color-bg-hover;
+  color: $color-text-secondary;
+  cursor: pointer;
+  flex-shrink: 0;
+  border: none;
+  transition: all 0.15s;
+
+  &:hover {
+    background-color: $color-border;
+    color: $color-text-main;
+  }
+}
+
+// 结果列表容器
+.resultContainer {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 320px; // 预留足够高度，防止结果切换时弹窗抖动
+  contain: content; // 隔离布局计算，减少抖动
+
+  @include scrollbar;
+}
+
+// 居中状态（空状态 / 加载中 / 错误）
+.centerStatus {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 60px 16px;
+  color: $color-text-secondary;
+  font-size: $font-size-base;
+  user-select: none;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+  color: $color-primary;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.errorText {
+  color: $color-danger;
+}
+
+// 结果列表
+.resultList {
+  @include flex(column, flex-start, stretch);
+  padding: 8px;
+  gap: 2px;
+}
+
+// 单个结果项
+.resultItem {
+  padding: 12px 14px;
+  border-radius: $radius-lg;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid transparent;
+
+  &:hover,
+  &.selected {
+    background-color: $color-bg-hover;
+    border-color: $color-border-light;
+  }
+}
+
+// 结果项头部：标题 + 时间
+.resultHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.resultSessionTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-primary;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+// 匹配时间
+.resultTime {
+  flex-shrink: 0;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  white-space: nowrap;
+}
+
+.resultPreview {
+  font-size: $font-size-base;
+  color: $color-text-main;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+// 会话标题匹配标签
+.matchBadge {
+  display: inline-block;
+  font-size: $font-size-sm;
+  color: $color-primary;
+  background-color: $color-primary-light;
+  padding: 2px 8px;
+  border-radius: $radius-sm;
+}
+
+// 右上角关闭按钮
+.closeBtn {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  @include flex-center;
+  width: 32px;
+  height: 32px;
+  border-radius: $radius-full;
+  background: $color-bg-soft;
+  color: $color-text-secondary;
+  cursor: pointer;
+  border: 1px solid $color-border-light;
+  transition: all 0.15s;
+  z-index: 1;
+
+  &:hover {
+    background-color: $color-bg-hover;
+    color: $color-text-main;
+    border-color: $color-border;
+  }
+}
+
+// 移动端适配
+@media (max-width: 750px) {
+  .dialog {
+    width: calc(100vw - 24px);
+    top: 60px;
+    max-height: calc(100vh - 100px);
+    border-radius: $radius-xl;
+  }
+
+  .inputWrapper {
+    padding: 12px 14px;
+  }
+
+  .resultItem {
+    padding: 10px 12px;
+  }
+
+  .resultSessionTitle {
+    font-size: $font-size-base;
+  }
+}

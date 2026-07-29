@@ -207,8 +207,30 @@ export interface SendMessagePayload {
 }
 
 /**
- * 流式响应分片。
+ * 搜索响应数据。
  */
+export interface SearchResultItem {
+  /** 所属会话 ID */
+  sessionId: number;
+  /** 会话标题 */
+  sessionTitle: string;
+  /** 匹配的消息 ID，搜索标题匹配时为 null */
+  messageId: number | null;
+  /** 消息角色 */
+  role: MessageRole | null;
+  /** 消息内容摘要 */
+  preview: string;
+  /** 匹配时间 */
+  matchedAt: string;
+}
+
+/**
+ * 搜索响应数据。
+ */
+export interface SearchResponse {
+  /** 搜索结果列表 */
+  results: SearchResultItem[];
+}
 export interface ChatStreamChunk {
   /** 当前助手消息 ID */
   message_id?: number;

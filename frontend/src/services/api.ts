@@ -15,6 +15,7 @@ import type {
   LoginPayload,
   MessageListData,
   RegisterPayload,
+  SearchResponse,
   SendMessagePayload,
   SessionListData,
 } from '../types/api';
@@ -384,6 +385,18 @@ export const sessionApi = {
     api.delete<ApiResponse<DeleteMessagesData>>(
       `/chat/sessions/${sessionId}/messages?after_id=${afterId}`,
     ),
+};
+
+export const searchApi = {
+  /**
+   * 搜索当前用户的所有会话与消息内容。
+   * @param keyword - 搜索关键词
+   * @param limit - 返回结果数量上限（默认 20）
+   */
+  conversation: (keyword: string, limit = 20) =>
+    api.get<ApiResponse<SearchResponse>>('/chat/search', {
+      params: { keyword, limit },
+    }),
 };
 
 export const messageApi = {

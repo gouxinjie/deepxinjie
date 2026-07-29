@@ -43,6 +43,23 @@
   @include flex(row, flex-start, center);
 }
 
+// 搜索按钮样式
+.searchBtn {
+  @include flex-center;
+  width: 32px;
+  height: 32px;
+  border-radius: $radius-md;
+  background: transparent;
+  color: $color-text-secondary;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: $color-bg-hover;
+    color: $color-text-main;
+  }
+}
+
 // 收起按钮样式
 .collapseBtn {
   @include flex-center;

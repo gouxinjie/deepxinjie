@@ -73,6 +73,7 @@ $dark-text-3: #676767; // text-tertiary / shortcut-text
   --color-primary-active:   #{$green-brand-700};
   --color-primary-disabled: #{$green-brand-200};
   --color-primary-light:    #{$green-brand-50};
+  --color-primary-rgb:      22, 145, 95; // 主色 RGB 分量，用于透明度运算
 
   // 2.2 背景色 (Backgrounds)
   --color-bg:               #{$white};
@@ -139,6 +140,7 @@ $dark-text-3: #676767; // text-tertiary / shortcut-text
   --color-primary-active:   #{$blue-700};
   --color-primary-disabled: #{$blue-200};
   --color-primary-light:    #{$blue-50};
+  --color-primary-rgb:      77, 107, 254;
   --shadow-primary:         0 4px 12px rgba(77, 107, 254, 0.25);
 }
 
@@ -148,6 +150,7 @@ $dark-text-3: #676767; // text-tertiary / shortcut-text
   --color-primary-active:   #{$green-brand-700};
   --color-primary-disabled: #{$green-brand-200};
   --color-primary-light:    #{$green-brand-50};
+  --color-primary-rgb:      22, 145, 95;
   --shadow-primary:         0 4px 12px rgba(22, 145, 95, 0.25);
 }
 
