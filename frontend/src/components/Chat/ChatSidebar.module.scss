@@ -127,12 +127,13 @@
 .historyGroup {
   @include flex(column, flex-start, stretch);
   gap: 1px;
+  padding-top: 4px;
 }
 
 .historyLabel {
   color: $color-text-secondary;
   user-select: none;
-  margin-bottom: 2px;
+  margin-bottom: 6px;
   padding: 6px 10px 0;
   font-size: $font-size-sm;
   font-weight: $font-weight-semibold;
@@ -214,7 +215,7 @@
   border-radius: $radius-xl;
   padding: 6px;
   box-shadow: $shadow-md;
-  z-index: 1000;
+  z-index: 1002;
   border: 1px solid $color-border-light;
   animation: menuFadeIn 0.15s ease-out;
 }
@@ -363,26 +364,32 @@
 .footer {
   margin-top: auto;
   position: relative;
-  padding: 0 12px; // 底部也需要恢复内边距
+  padding: 12px 12px 2px;
+  // 顶部分隔线，与对话列表区分
+  border-top: 1px solid $color-border-light;
 }
 
 .userProfile {
   @include flex(row, flex-start, center);
   gap: 12px;
-  padding: 8px 12px;
+  padding: 2px 12px;
   cursor: pointer;
   border-radius: $radius-xl;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, border-radius 0.2s;
   background-color: transparent;
   
   &:hover {
     background-color: $color-bg-hover;
   }
+
+  &:active {
+    border-radius: 8px;
+  }
 }
 
 .avatar {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   background-color: $color-border;
   border-radius: 50%;
   @include flex-center;
@@ -436,8 +443,9 @@
 .userMenu {
   position: absolute;
   bottom: calc(100% + 8px);
-  left: 0;
-  width: 180px; // 修改宽度，比之前窄一些
+  left: 8px;
+  right: 8px;
+  width: auto;
   background-color: $color-bg;
   border-radius: $radius-2xl;
   padding: 8px;
@@ -509,7 +517,7 @@
     padding: 2px;
     flex-shrink: 0;
     // 色块组整体容器：浅灰底圆角，形成视觉分组
-    background-color: var(--color-bg-secondary);
+    background-color: $color-bg-hover;
     border-radius: 8px;
   }
 

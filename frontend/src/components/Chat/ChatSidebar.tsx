@@ -3,7 +3,7 @@
  * @description 会话侧边栏组件，负责展示会话列表、重命名、删除、置顶和登录入口
  * @author gouxinjie
  * @created 2026-03-16
- * @updated 2026-04-10
+ * @updated 2026-07-29
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -115,6 +115,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const menuRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -288,9 +289,17 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
   };
 
   /**
-   * 退出登录。
+   * 退出登录，需用户二次确认。
    */
-  const handleLogout = async () => {
+  const handleLogout = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  /**
+   * 确认退出登录，执行清除会话并跳转。
+   */
+  const confirmLogout = async () => {
+    setShowLogoutConfirm(false);
     await logoutAuthSession();
     setUserMenuOpen(false);
     setSessions([]);
@@ -629,6 +638,15 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
             }
           }}
           onCancel={() => setDeleteConfirmId(null)}
+        />
+
+        <Modal
+          visible={showLogoutConfirm}
+          title="退出登录"
+          content="确定要退出登录吗？"
+          confirmText="退出"
+          onConfirm={() => { void confirmLogout(); }}
+          onCancel={() => setShowLogoutConfirm(false)}
         />
 
         <LoginModal
