@@ -77,7 +77,7 @@ const Layout: React.FC<LayoutProps> = ({
               <button className={styles.expandBtn} onClick={onToggleCollapse} title="展开侧边栏">
                 <PanelLeftOpen size={19} />
               </button>
-              <button className={styles.newChatBtn} onClick={() => navigate('/')} title="开启新对话">
+              <button className={styles.newChatBtn} onClick={() => navigate('/')} title="新对话">
                 <Plus size={19} />
               </button>
             </div>

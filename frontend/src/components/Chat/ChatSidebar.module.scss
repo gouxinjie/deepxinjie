@@ -486,6 +486,41 @@
       background-color: $color-bg-hover;
     }
   }
+
+  // 主题色菜单项：文字在左，色点在右
+  &.colorSchemeMenuItem {
+    cursor: default;
+  }
+
+  .userMenuSwatches {
+    @include flex(row, flex-start, center);
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  .userMenuSwatch {
+    width: 16px;
+    height: 16px;
+    border-radius: $radius-round;
+    background-color: var(--swatch-color);
+    border: 2px solid transparent;
+    cursor: pointer;
+    opacity: 0.65;
+    padding: 0;
+    transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+
+    &:hover {
+      opacity: 0.9;
+      transform: scale(1.1);
+    }
+  }
+
+  .userMenuSwatchActive {
+    opacity: 1;
+    transform: scale(1.12);
+    // 选中态：用背景色隔离 + 当前色描边
+    box-shadow: 0 0 0 2px $color-bg, 0 0 0 3.5px var(--swatch-color);
+  }
 }
 
 .loginBtnWrapper {

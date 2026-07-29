@@ -6,6 +6,8 @@
   width: 100vw;
   background-color: $color-bg;
   overflow: hidden;
+  // 主色 / 明暗主题切换时的平滑过渡
+  transition: background-color 0.3s ease;
 }
 
 .sidebarWrapper {
@@ -30,7 +32,7 @@
   height: 100%;
   overflow: hidden;
   background-color: $color-bg;
-  transition: padding 0.3s ease;
+  transition: padding 0.3s ease, background-color 0.3s ease, color 0.3s ease;
 }
 
 .content {

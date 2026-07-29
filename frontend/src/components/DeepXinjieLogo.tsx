@@ -1,9 +1,9 @@
 /**
  * @component DeepXinjieLogo
- * @description DeepXinjie 品牌 Logo 组件，使用几何化 SVG 呈现更稳定的产品识别符号
+ * @description DeepXinjie 品牌 Logo 组件，斜切渐变卡片搭配对话气泡与 X 符号，兼顾 AI 会话语义与品牌辨识度
  * @author gouxinjie
  * @created 2026-04-08
- * @updated 2026-04-08
+ * @updated 2026-07-29
  */
 import React from 'react';
 
@@ -30,38 +30,39 @@ const DeepXinjieLogo: React.FC<DeepXinjieLogoProps> = ({ size = 24, style }) => 
       aria-label="DeepXinjie Logo"
     >
       <defs>
-        <linearGradient id="deepxinjie-logo-gradient" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse">
+        <linearGradient id="dx-logo-bg" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="var(--color-primary)" />
-          <stop offset="55%" stopColor="var(--color-primary-hover)" />
-          <stop offset="100%" stopColor="#163B8F" />
+          <stop offset="60%" stopColor="var(--color-primary-hover)" />
+          <stop offset="100%" stopColor="var(--color-primary-active)" />
         </linearGradient>
-        <linearGradient id="deepxinjie-logo-accent" x1="7" y1="6" x2="17" y2="18" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="rgba(255, 255, 255, 0.96)" />
-          <stop offset="100%" stopColor="rgba(255, 255, 255, 0.84)" />
-        </linearGradient>
-        <linearGradient id="deepxinjie-logo-glow" x1="6" y1="4" x2="18" y2="16" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="var(--color-primary-hover)" />
-          <stop offset="100%" stopColor="rgba(255, 255, 255, 0.12)" />
+        <linearGradient id="dx-logo-x" x1="8" y1="9" x2="13" y2="13" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="var(--color-primary)" />
+          <stop offset="100%" stopColor="var(--color-primary-active)" />
         </linearGradient>
       </defs>
 
-      <rect x="2" y="2" width="20" height="20" rx="6.5" fill="url(#deepxinjie-logo-gradient)" />
+      {/* 斜切圆角卡片，右上切角增强品牌科技感与辨识度 */}
       <path
-        d="M14 2H15.9C19.2699 2 22 4.73005 22 8.1V10.4L10.4 22H8.1C4.73005 22 2 19.2699 2 15.9V14L14 2Z"
-        fill="url(#deepxinjie-logo-glow)"
+        d="M4.5 2 H16 L22 8 V19.5 A2.5 2.5 0 0 1 19.5 22 H4.5 A2.5 2.5 0 0 1 2 19.5 V4.5 A2.5 2.5 0 0 1 4.5 2 Z"
+        fill="url(#dx-logo-bg)"
       />
+      {/* 左上角柔光，提升质感 */}
+      <rect x="3" y="3" width="8" height="8" rx="3.5" fill="#FFFFFF" fillOpacity="0.12" />
+      {/* 对话气泡，白色半透明，传达智能会话 */}
       <path
-        d="M7.2 6.7H9.9L12.1 9.92L14.35 6.7H17.05L13.45 11.72L17.35 17.3H14.62L12.05 13.56L9.42 17.3H6.72L10.65 11.79L7.2 6.7Z"
-        fill="url(#deepxinjie-logo-accent)"
+        d="M8 7 H14 C15 7 15.8 7.8 15.8 8.8 V12.5 C15.8 13.5 15 14.3 14 14.3 H11.4 L9 16.5 V14.3 H8 C7 14.3 6.2 13.5 6.2 12.5 V8.8 C6.2 7.8 7 7 8 7 Z"
+        fill="#FFFFFF"
+        fillOpacity="0.96"
       />
+      {/* 气泡内 X 形符号，呼应品牌名 Xinjie，强化识别 */}
       <path
-        d="M8.8 6.7H9.9L16.05 15.45L14.95 17.02L8.8 8.25V6.7Z"
-        fill="rgba(255, 255, 255, 0.18)"
+        d="M9.5 9.8 L11.5 11.8 M11.5 9.8 L9.5 11.8"
+        stroke="url(#dx-logo-x)"
+        strokeWidth="1.4"
+        strokeLinecap="round"
       />
-      <path
-        d="M15.95 5.8C16.75 5.8 17.4 6.45 17.4 7.25C17.4 8.05 16.75 8.7 15.95 8.7C15.15 8.7 14.5 8.05 14.5 7.25C14.5 6.45 15.15 5.8 15.95 5.8Z"
-        fill="#9FD3FF"
-      />
+      {/* 斜切处灵动光点，点缀 AI 智能感 */}
+      <circle cx="19" cy="4.6" r="1.2" fill="#FFFFFF" fillOpacity="0.9" />
     </svg>
   );
 };

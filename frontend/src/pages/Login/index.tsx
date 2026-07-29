@@ -1,12 +1,12 @@
 /**
  * @component LoginPage
- * @description 登录页组件，只支持账号密码登录与注册
+ * @description 登录页组件，只支持账号密码登录与注册；采用左右分屏布局，左侧品牌区随主题主色变化
  * @author gouxinjie
  * @created 2026-03-16
- * @updated 2026-04-10
+ * @updated 2026-07-29
  */
 import React, { useState } from 'react';
-import { LockKeyhole, Smartphone, UserRound } from 'lucide-react';
+import { Check, LockKeyhole, Smartphone, UserRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import DeepXinjieLogo from '../../components/DeepXinjieLogo';
@@ -104,23 +104,70 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className={styles.page}>
+      {/* 左侧品牌展示区：背景渐变随主色方案与明暗主题变化 */}
+      <aside className={styles.brandPanel}>
+        <div className={styles.brandOrnaments} aria-hidden="true">
+          <span className={`${styles.orb} ${styles.orb1}`} />
+          <span className={`${styles.orb} ${styles.orb2}`} />
+        </div>
+
+        <div className={styles.brandTop}>
+          <div className={styles.brandBadge}>
+            <DeepXinjieLogo size={26} />
+            <span className={styles.brandName}>DeepXinjie</span>
+          </div>
+        </div>
+
+        <div className={styles.brandBody}>
+          <h1 className={styles.brandTitle}>
+            你的专属<br />AI 智能助手
+          </h1>
+          <p className={styles.brandDesc}>
+            支持深度思考与联网搜索，一个更懂你的全能对话伙伴。
+          </p>
+
+          <ul className={styles.featureList}>
+            <li className={styles.featureItem}>
+              <span className={styles.featureIcon}>
+                <Check size={15} strokeWidth={2.5} />
+              </span>
+              <span>深度思考 + 联网搜索，回答更准确更全面</span>
+            </li>
+            <li className={styles.featureItem}>
+              <span className={styles.featureIcon}>
+                <Check size={15} strokeWidth={2.5} />
+              </span>
+              <span>多轮对话记忆，上下文无缝衔接，越聊越懂你</span>
+            </li>
+            <li className={styles.featureItem}>
+              <span className={styles.featureIcon}>
+                <Check size={15} strokeWidth={2.5} />
+              </span>
+              <span>隐私安全有保障，你的每一次对话都值得信赖</span>
+            </li>
+          </ul>
+        </div>
+
+        <div className={styles.brandFooter}>© 2026 DeepXinjie · 与 AI 对话，从这里开始</div>
+      </aside>
+
+      {/* 右侧登录区 */}
       <main className={styles.main}>
-        <section className={styles.hero}>
-          <div className={styles.heroMark}>
-            <DeepXinjieLogo size={44} />
-          </div>
-
-          <div key={mode} className={styles.heroCopy}>
-            <h1 className={styles.title}>{mode === 'login' ? '欢迎回来' : '创建你的账号'}</h1>
-            <p className={styles.subtitle}>
-              {mode === 'login'
-                ? '使用手机号账号和密码继续你的会话。'
-                : '注册后会自动登录，已有会话与账号数据继续保留。'}
-            </p>
-          </div>
-        </section>
-
         <section className={styles.card}>
+          <header className={styles.cardHeader}>
+            <div className={styles.cardLogo}>
+              <DeepXinjieLogo size={32} />
+            </div>
+            <h2 className={styles.cardTitle}>
+              {mode === 'login' ? '欢迎回来' : '创建你的账号'}
+            </h2>
+            <p className={styles.cardSubtitle}>
+              {mode === 'login'
+                ? '登录你的账号，继续上一次的对话。'
+                : '创建账号即可开始与 AI 对话，体验智能助手。'}
+            </p>
+          </header>
+
           <div className={styles.tabs}>
             <button
               type="button"
@@ -197,16 +244,14 @@ const LoginPage: React.FC = () => {
             <button type="submit" className={styles.submitButton} disabled={loading}>
               {loading ? '处理中...' : mode === 'login' ? '继续' : '注册并继续'}
             </button>
-
-            <div className={styles.footer}>
-              <p key={mode} className={styles.footerText}>
-                {mode === 'login'
-                  ? '没有账号？切换到注册即可创建新账号。'
-                  : '注册即表示你同意平台的基础使用条款与隐私约定。'}
-              </p>
-            </div>
           </form>
         </section>
+
+        <p className={styles.mainFooter}>
+          {mode === 'login'
+            ? '没有账号？切换到注册即可创建新账号。'
+            : '注册即表示你同意平台的基础使用条款与隐私约定。'}
+        </p>
       </main>
     </div>
   );

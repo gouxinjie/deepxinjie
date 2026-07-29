@@ -17,7 +17,7 @@ function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarLayerActive, setIsSidebarLayerActive] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const { theme } = useThemeStore();
+  const { theme, colorScheme } = useThemeStore();
   const location = useLocation();
   const isMobile = useMobile();
   const initialized = useAuthStore((state) => state.initialized);
@@ -25,11 +25,18 @@ function App() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   /**
-   * 同步主题到根节点。
+   * 同步明暗主题到根节点。
    */
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  /**
+   * 同步主色方案（蓝色 / 绿色）到根节点，驱动全局主色切换。
+   */
+  useEffect(() => {
+    document.documentElement.setAttribute('data-color-scheme', colorScheme);
+  }, [colorScheme]);
 
   /**
    * 应用启动时恢复登录态。

@@ -172,7 +172,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
         <textarea
           ref={textareaRef}
           className={styles.textarea}
-          placeholder="给 DeepXinjie 发送消息"
+          placeholder="输入你的问题，开始对话..."
           value={message}
           onChange={(event) => setMessage(event.target.value)}
           onKeyDown={handleKeyDown}

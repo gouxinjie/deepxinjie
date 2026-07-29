@@ -37,6 +37,14 @@ $red-500:  #ff4d4f;
 $red-600:  #ff7875;
 $green-500: #4caf50;
 $green-600: #52c41a;
+// 4.2 品牌绿色调色盘（用于绿色主色方案，默认主色，已调低亮度更沉稳）
+$green-brand-50:  #e8f5ee; // 浅色背景 / 选中态底色
+$green-brand-100: #cdeadd;
+$green-brand-200: #a3d9bf; // 禁用态
+$green-brand-500: #16915f; // 主色（沉稳森林绿）
+$green-brand-600: #127a50; // 悬停
+$green-brand-700: #0f6643; // 按下 / 激活
+$green-brand-800: #0b4a30;
 $blue-info: #2196f3;
 $orange-500: #faad14;
 
@@ -59,12 +67,12 @@ $dark-text-3: #676767; // text-tertiary / shortcut-text
  */
 
 :root {
-  // 2.1 主色调 (Brand)
-  --color-primary:          #{$blue-500};
-  --color-primary-hover:    #{$blue-600};
-  --color-primary-active:   #{$blue-700};
-  --color-primary-disabled: #{$blue-200};
-  --color-primary-light:    #{$blue-50};
+  // 2.1 主色调 (Brand) —— 默认使用绿色主色方案
+  --color-primary:          #{$green-brand-500};
+  --color-primary-hover:    #{$green-brand-600};
+  --color-primary-active:   #{$green-brand-700};
+  --color-primary-disabled: #{$green-brand-200};
+  --color-primary-light:    #{$green-brand-50};
 
   // 2.2 背景色 (Backgrounds)
   --color-bg:               #{$white};
@@ -105,7 +113,7 @@ $dark-text-3: #676767; // text-tertiary / shortcut-text
   --shadow-md:              0 8px 24px rgba(0, 0, 0, 0.12);
   --shadow-lg:              0 12px 32px rgba(0, 0, 0, 0.15);
   --shadow-xl:              0 20px 48px rgba(0, 0, 0, 0.2);
-  --shadow-primary:         0 4px 12px rgba(77, 107, 254, 0.25);
+  --shadow-primary:         0 4px 12px rgba(22, 145, 95, 0.25); // 默认绿色主色阴影
   --shadow-input:           0 8px 24px rgba(15, 23, 42, 0.06);
   --shadow-input-focus:     0 10px 28px rgba(15, 23, 42, 0.09);
 
@@ -123,14 +131,29 @@ $dark-text-3: #676767; // text-tertiary / shortcut-text
   --font-weight-semibold: 600; --font-weight-bold: 700;
 }
 
-// 2.9 深色模式 Token 覆盖 (Dark Theme Overrides)
-[data-theme='dark'] {
+// 2.8 主色方案 (Color Scheme)
+// 通过根节点 data-color-scheme 属性切换主色，默认绿色（与上方 :root 默认值一致）
+[data-color-scheme='blue'] {
   --color-primary:          #{$blue-500};
   --color-primary-hover:    #{$blue-600};
   --color-primary-active:   #{$blue-700};
-  --color-primary-disabled: #{$blue-800};
-  --color-primary-light:    rgba(77, 107, 254, 0.15);
+  --color-primary-disabled: #{$blue-200};
+  --color-primary-light:    #{$blue-50};
+  --shadow-primary:         0 4px 12px rgba(77, 107, 254, 0.25);
+}
 
+[data-color-scheme='green'] {
+  --color-primary:          #{$green-brand-500};
+  --color-primary-hover:    #{$green-brand-600};
+  --color-primary-active:   #{$green-brand-700};
+  --color-primary-disabled: #{$green-brand-200};
+  --color-primary-light:    #{$green-brand-50};
+  --shadow-primary:         0 4px 12px rgba(22, 145, 95, 0.25);
+}
+
+// 2.9 深色模式 Token 覆盖 (Dark Theme Overrides)
+[data-theme='dark'] {
+  // 主色相关 token 由 [data-color-scheme] 决定，此处仅覆盖中性 token
   --color-bg:               #{$dark-900};
   --color-bg-soft:          #{$dark-900};
   --color-bg-hover:         #{$dark-700};
@@ -160,9 +183,19 @@ $dark-text-3: #676767; // text-tertiary / shortcut-text
   --shadow-md:              0 4px 16px rgba(0, 0, 0, 0.3);
   --shadow-lg:              0 8px 24px rgba(0, 0, 0, 0.4);
   --shadow-xl:              0 12px 32px rgba(0, 0, 0, 0.5);
-  --shadow-primary:         0 4px 12px rgba(77, 107, 254, 0.3);
   --shadow-input:           0 8px 24px rgba(0, 0, 0, 0.2);
   --shadow-input-focus:     0 10px 28px rgba(0, 0, 0, 0.3);
+}
+
+// 2.10 深色模式下的主色方案（覆盖主色相关的浅色/阴影变量）
+[data-theme='dark'][data-color-scheme='blue'] {
+  --color-primary-light: rgba(77, 107, 254, 0.18);
+  --shadow-primary:      0 4px 12px rgba(77, 107, 254, 0.35);
+}
+
+[data-theme='dark'][data-color-scheme='green'] {
+  --color-primary-light: rgba(22, 145, 95, 0.18);
+  --shadow-primary:      0 4px 12px rgba(22, 145, 95, 0.35);
 }
 
 /**

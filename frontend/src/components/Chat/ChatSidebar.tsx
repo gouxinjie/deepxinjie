@@ -14,6 +14,7 @@ import {
   LogOut,
   Moon,
   MoreHorizontal,
+  Palette,
   PanelLeftClose,
   Pin,
   Settings,
@@ -121,7 +122,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
   const navigate = useNavigate();
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
-  const { theme, toggleTheme } = useThemeStore();
+  const { theme, toggleTheme, colorScheme, setColorScheme } = useThemeStore();
 
   const pathParts = location.pathname.split('/');
   const currentSessionId = pathParts[1] === 'chat' ? pathParts[2] : undefined;
@@ -482,7 +483,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
 
         <button className={styles.newChatBtn} onClick={handleNewChat}>
           <CirclePlus size={20} strokeWidth={1.5} />
-          <span>开启新对话</span>
+          <span>新对话</span>
         </button>
 
         <div className={styles.history}>
@@ -541,6 +542,8 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
                   <Sun size={16} strokeWidth={1.5} />
                 )}
               </div>
+
+
             </div>
           ) : (
             <div className={styles.loginBtnWrapper}>
@@ -560,6 +563,44 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
                 <HelpCircle size={18} strokeWidth={1.5} />
                 <span>帮助与反馈</span>
               </div>
+
+              {/* 主色方案切换：以菜单项形式呈现 */}
+              <div
+                className={classNames(styles.userMenuItem, styles.colorSchemeMenuItem)}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <Palette size={18} strokeWidth={1.5} />
+                <span>主题色</span>
+                <div
+                  className={styles.userMenuSwatches}
+                  role="group"
+                  aria-label="主色方案切换"
+                >
+                  <button
+                    type="button"
+                    className={classNames(styles.userMenuSwatch, {
+                      [styles.userMenuSwatchActive]: colorScheme === 'blue',
+                    })}
+                    style={{ '--swatch-color': '#4d6bfe' } as React.CSSProperties}
+                    onClick={() => setColorScheme('blue')}
+                    title="蓝色调（经典）"
+                    aria-label="切换到蓝色主色"
+                    aria-pressed={colorScheme === 'blue'}
+                  />
+                  <button
+                    type="button"
+                    className={classNames(styles.userMenuSwatch, {
+                      [styles.userMenuSwatchActive]: colorScheme === 'green',
+                    })}
+                    style={{ '--swatch-color': '#16915f' } as React.CSSProperties}
+                    onClick={() => setColorScheme('green')}
+                    title="绿色调（默认）"
+                    aria-label="切换到绿色主色"
+                    aria-pressed={colorScheme === 'green'}
+                  />
+                </div>
+              </div>
+
               <div className={classNames(styles.userMenuItem, styles.logout)} onClick={handleLogout}>
                 <LogOut size={18} strokeWidth={1.5} />
                 <span>退出登录</span>
