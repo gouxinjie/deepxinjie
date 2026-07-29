@@ -246,4 +246,8 @@ export interface ChatStreamChunk {
   search_status?: string;
   /** 思考耗时 */
   thinking_time?: number;
+  /** AI 自动生成的会话标题（仅首轮回复完成后推送） */
+  title?: string;
+  /** 标题所属的会话 ID */
+  session_id?: number;
 }

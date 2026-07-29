@@ -17,6 +17,7 @@ import ChatInput from './ChatInput';
 import ChatMessage from './ChatMessage';
 import ChatWelcome from './ChatWelcome';
 import { extractApiErrorMessage, messageApi, sendChatStream, sessionApi } from '../../services/api';
+import { useSessionStore } from '../../store/sessionStore';
 import type { Message } from '../../types/chat';
 import type { ChatStreamChunk, MessageRecord, MessageStatus } from '../../types/api';
 
@@ -61,6 +62,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
   const location = useLocation();
   const navigate = useNavigate();
   const highlightMessageId = (location.state as { highlightMessageId?: number | string } | null)?.highlightMessageId;
+  const updateSessionTitle = useSessionStore((state) => state.updateSessionTitle);
 
   const chatAreaRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -461,6 +463,9 @@ const ChatMain: React.FC<ChatMainProps> = ({
         onChunk: (chunk) => {
           if (typeof chunk.message_id === 'number') {
             activeMessageId = chunk.message_id.toString();
+          }
+          if (typeof chunk.title === 'string' && typeof chunk.session_id === 'number') {
+            updateSessionTitle(chunk.session_id, chunk.title);
           }
           applyStreamChunk(aiMessageId, chunk);
         },

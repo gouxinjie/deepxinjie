@@ -9,7 +9,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
-import 'highlight.js/styles/github.css';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
+import Mermaid from '../commons/Mermaid';
 import {
   Brain,
   Check,
@@ -187,11 +190,39 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
     }
   };
 
+  /**
+   * 递归提取 React 节点的纯文本内容
+   * 用于复制 / 下载被 rehype-highlight 拆分为多个 span 元素的高亮代码
+   * @param node - 任意 React 节点
+   * @returns 拼接后的纯文本字符串
+   */
+  const getNodeText = (node: React.ReactNode): string => {
+    if (node === null || node === undefined || typeof node === 'boolean') {
+      return '';
+    }
+    if (typeof node === 'string' || typeof node === 'number') {
+      return String(node);
+    }
+    if (Array.isArray(node)) {
+      return node.map((item) => getNodeText(item)).join('');
+    }
+    if (React.isValidElement(node)) {
+      return getNodeText((node.props as { children?: React.ReactNode }).children);
+    }
+    return '';
+  };
+
   const CodeBlock = ({ children, className, ...props }: CodeProps & React.ComponentPropsWithoutRef<'code'>) => {
     const [isCodeCopied, setIsCodeCopied] = useState(false);
     const match = /language-(\w+)/.exec(className || '');
     const language = match ? match[1] : '';
-    const code = String(children).replace(/\n$/, '');
+    // 高亮后 children 为 React 元素数组，需递归提取纯文本再复制 / 下载
+    const code = getNodeText(children).replace(/\n$/, '');
+
+    // 语言标识为 mermaid 时，使用 Mermaid 组件渲染图表
+    if (language === 'mermaid') {
+      return <Mermaid chart={code} />;
+    }
 
     const handleCopyCode = async () => {
       await navigator.clipboard.writeText(code);
@@ -325,8 +356,8 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
               ))}
             {message.content ? (
               <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeHighlight]}
+              remarkPlugins={[remarkGfm, remarkMath]}
+              rehypePlugins={[rehypeHighlight, rehypeKatex]}
                 components={{
                   a: ({ href, children, ...props }) => {
                     if (href?.startsWith('#citation-')) {
@@ -353,6 +384,17 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
                         {children}
                       </a>
                     );
+                  },
+                  pre: ({ node, children }) => {
+                    // 内部为 mermaid 图表时去掉 pre 包裹，避免代码块样式与非法嵌套
+                    const codeNode = node?.children?.[0] as { properties?: { className?: unknown } } | undefined;
+                    const cls = codeNode?.properties?.className;
+                    const isMermaid =
+                      Array.isArray(cls) && cls.some((c) => typeof c === 'string' && c.includes('language-mermaid'));
+                    if (isMermaid) {
+                      return <>{children}</>;
+                    }
+                    return <pre>{children}</pre>;
                   },
                   code: CodeBlock,
                 }}

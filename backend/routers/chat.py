@@ -4,6 +4,7 @@
 
 import asyncio
 import json
+import logging
 import os
 import uuid
 from typing import Any, AsyncGenerator, Optional
@@ -382,6 +383,66 @@ def persist_assistant_message(
         raise
     finally:
         cursor.close()
+
+
+def update_session_title(db: Any, session_id: int, title: str) -> None:
+    """
+    直接更新会话标题（供标题自动生成与手动重命名复用）。
+    """
+    cursor = db.cursor()
+    try:
+        cursor.execute(
+            "UPDATE chat_session SET title = %s WHERE id = %s",
+            (title, session_id),
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        cursor.close()
+
+
+async def generate_session_title(user_text: str, assistant_text: str) -> str | None:
+    """
+    调用大模型为会话生成简短标题。
+    说明：
+    - 仅在会话首轮回复完成后触发
+    - 使用 deepseek-chat 非流式调用，成本低、速度快
+    - 失败时返回 None，由调用方决定是否兜底
+    """
+    if client is None:
+        return None
+
+    system_prompt = (
+        "你是一个对话标题生成器。请根据用户与助手的对话内容，"
+        "生成一句简洁的中文标题，要求：不超过 15 个字；"
+        "概括用户的核心意图；不要使用引号、书名号或 Markdown 符号；"
+        "只输出标题本身，不要任何解释或标点后缀。"
+    )
+    context = f"用户：{user_text}\n助手：{assistant_text[:500]}"
+
+    try:
+        response = await client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": context},
+            ],
+            temperature=0.3,
+            max_tokens=32,
+            stream=False,
+        )
+        title = response.choices[0].message.content or ""
+        title = title.strip().strip('"\'（）【】《》')
+        title = title.strip()
+        if not title:
+            return None
+        return title[:20]
+    except Exception as exc:
+        # 记录生成失败原因，便于排查（不影响主对话流程）
+        logging.warning("会话标题自动生成失败：%s", exc)
+        return None
 
 
 def build_model_history(
@@ -902,6 +963,34 @@ async def generate_response(
         yield (
             f"data: {json.dumps({'message_id': assistant_message_id, 'message_status': MESSAGE_STATUS_COMPLETED}, ensure_ascii=False)}\n\n"
         )
+
+        # 首轮回复完成后，自动生成会话标题（仅当标题仍为自动生成值）
+        if payload.continue_from_message_id is None:
+            current_title = None
+            title_cursor = db.cursor(dictionary=True)
+            try:
+                title_cursor.execute(
+                    "SELECT title FROM chat_session WHERE id = %s",
+                    (payload.session_id,),
+                )
+                title_row = title_cursor.fetchone()
+                if title_row:
+                    current_title = title_row["title"]
+            finally:
+                title_cursor.close()
+
+            first_msg = (payload.content or "").strip()
+            expected_auto_title = first_msg[:20] + ("..." if len(first_msg) > 20 else "")
+            is_auto_title = current_title in ("新对话", expected_auto_title)
+
+            if is_auto_title and first_msg:
+                generated_title = await generate_session_title(first_msg, full_content)
+                if generated_title:
+                    update_session_title(db, payload.session_id, generated_title)
+                    yield (
+                        f"data: {json.dumps({'title': generated_title, 'session_id': payload.session_id}, ensure_ascii=False)}\n\n"
+                    )
+
         yield "data: [DONE]\n\n"
     finally:
         db.close()

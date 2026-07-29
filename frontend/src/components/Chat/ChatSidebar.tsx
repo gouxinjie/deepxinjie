@@ -28,6 +28,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { extractApiErrorMessage, logoutAuthSession, sessionApi } from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
+import { useSessionStore } from '../../store/sessionStore';
 import { useThemeStore } from '../../store/themeStore';
 import type { AuthUser, SessionItem } from '../../types/api';
 import styles from './ChatSidebar.module.scss';
@@ -109,7 +110,8 @@ const getAvatarStyle = (nickname: string): React.CSSProperties => {
 };
 
 const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose, onToggleCollapse }) => {
-  const [sessions, setSessions] = useState<SessionItem[]>([]);
+  const sessions = useSessionStore((state) => state.sessions);
+  const setSessions = useSessionStore((state) => state.setSessions);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [menuOpenId, setMenuOpenId] = useState<number | null>(null);

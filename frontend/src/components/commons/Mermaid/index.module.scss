@@ -1,0 +1,44 @@
+// Mermaid 图表组件样式
+
+// 图表容器：居中展示，浅色背景 + 圆角边框，支持横向滚动
+.mermaidContainer {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+  margin: 12px 0;
+  background: var(--color-bg-soft);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  // 让生成的 svg 自适应宽度
+  :global(svg) {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+// 渲染失败时的错误展示块
+.mermaidError {
+  margin: 12px 0;
+  padding: 12px 16px;
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  background: var(--color-danger-bg);
+}
+
+// 错误标题
+.errorTitle {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-danger);
+  margin-bottom: 8px;
+}
+
+// 错误时展示的原始源码
+.errorCode {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
