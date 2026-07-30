@@ -5,18 +5,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
-def get_required_env(name: str) -> str:
-    """
-    获取种子脚本依赖的必填环境变量。
-    """
-    value = os.getenv(name)
-    if not value:
-        raise RuntimeError(f"缺少必填环境变量：{name}")
-    return value
+from common import get_required_env
 
 
 try:
+    conn = None
+    cursor = None
     conn = mysql.connector.connect(
         host=os.getenv("DB_HOST", "localhost"),
         user=os.getenv("DB_USER", "root"),
@@ -41,7 +35,7 @@ try:
 except mysql.connector.Error as err:
     print(f"种子用户初始化失败：{err}")
 finally:
-    if "cursor" in locals():
+    if cursor is not None:
         cursor.close()
-    if "conn" in locals():
+    if conn is not None:
         conn.close()

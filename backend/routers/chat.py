@@ -7,7 +7,10 @@ import json
 import logging
 import os
 import uuid
-from typing import Any, AsyncGenerator, Optional, cast
+from collections.abc import AsyncGenerator
+from typing import cast
+
+from mysql.connector import MySQLConnection
 
 from openai.types.chat import ChatCompletionMessageParam
 
@@ -72,14 +75,14 @@ class SendMessageRequest(BaseModel):
     is_deepthink: bool = False
     is_search: bool = False
     session_id: int
-    continue_from_message_id: Optional[int] = None
+    continue_from_message_id: int | None = None
 
 
-def build_success_response(data: Any, message: str = "操作成功") -> dict[str, Any]:
+def build_success_response(data: object | None = None, message: str = "操作成功") -> dict[str, object]:
     return {"success": True, "code": 200, "message": message, "data": data}
 
 
-def build_error_response(code: int, message: str, data: Any = None) -> dict[str, Any]:
+def build_error_response(code: int, message: str, data: object | None = None) -> dict[str, object]:
     return {"success": False, "code": code, "message": message, "data": data}
 
 
@@ -159,9 +162,9 @@ def initialize_chat_schema() -> None:
 
 def build_assistant_metadata(
     citations: list[SearchCitation],
-    search_status: Optional[str],
-) -> dict[str, Any]:
-    metadata: dict[str, Any] = {}
+    search_status: str | None,
+) -> dict[str, object]:
+    metadata: dict[str, object] = {}
     if citations:
         metadata["citations"] = [citation.to_dict() for citation in citations]
     if search_status:
@@ -172,7 +175,7 @@ def build_assistant_metadata(
 def encode_assistant_content(
     content: str,
     reasoning: str = "",
-    metadata: Optional[dict[str, Any]] = None,
+    metadata: dict[str, object] | None = None,
 ) -> str:
     parts: list[str] = []
     if metadata:
@@ -187,9 +190,9 @@ def encode_assistant_content(
     return "".join(parts)
 
 
-def decode_assistant_content(raw_content: str) -> dict[str, Any]:
+def decode_assistant_content(raw_content: str) -> dict[str, object]:
     remaining_content = raw_content
-    metadata: dict[str, Any] = {}
+    metadata: dict[str, object] = {}
     reasoning = ""
 
     if remaining_content.startswith(ASSISTANT_METADATA_START):
@@ -228,7 +231,7 @@ def decode_assistant_content(raw_content: str) -> dict[str, Any]:
     }
 
 
-def parse_citations(raw_citations: list[dict[str, Any]]) -> list[SearchCitation]:
+def parse_citations(raw_citations: list[dict[str, object]]) -> list[SearchCitation]:
     citations: list[SearchCitation] = []
     for item in raw_citations:
         if not isinstance(item, dict):
@@ -288,7 +291,7 @@ def build_stored_search_context(citations: list[SearchCitation]) -> str:
     return "\n\n".join(blocks)
 
 
-def require_owned_session(session_id: int, user_id: int, db: Any) -> dict[str, Any]:
+def require_owned_session(session_id: int, user_id: int, db: MySQLConnection) -> dict[str, object]:
     cursor = db.cursor(dictionary=True)
     try:
         cursor.execute(
@@ -311,7 +314,7 @@ def require_owned_session(session_id: int, user_id: int, db: Any) -> dict[str, A
     return session
 
 
-def require_owned_message(message_id: int, user_id: int, db: Any) -> dict[str, Any]:
+def require_owned_message(message_id: int, user_id: int, db: MySQLConnection) -> dict[str, object]:
     cursor = db.cursor(dictionary=True)
     try:
         cursor.execute(
@@ -343,7 +346,7 @@ def require_owned_message(message_id: int, user_id: int, db: Any) -> dict[str, A
     return message
 
 
-def normalize_message_status(raw_status: Any) -> str:
+def normalize_message_status(raw_status: object) -> str:
     if isinstance(raw_status, str) and raw_status in {
         MESSAGE_STATUS_STREAMING,
         MESSAGE_STATUS_STOPPED,
@@ -355,12 +358,12 @@ def normalize_message_status(raw_status: Any) -> str:
 
 
 def persist_assistant_message(
-    db: Any,
+    db: MySQLConnection,
     message_id: int,
     content: str,
     reasoning: str,
     citations: list[SearchCitation],
-    search_status: Optional[str],
+    search_status: str | None,
     thinking_time: int,
     message_status: str,
     touch_session: bool = False,
@@ -393,7 +396,7 @@ def persist_assistant_message(
         cursor.close()
 
 
-def update_session_title(db: Any, session_id: int, title: str) -> None:
+def update_session_title(db: MySQLConnection, session_id: int, title: str) -> None:
     """
     直接更新会话标题（供标题自动生成与手动重命名复用）。
     """
@@ -457,8 +460,8 @@ async def generate_session_title(user_text: str, assistant_text: str) -> str | N
 
 def build_model_history(
     session_id: int,
-    db: Any,
-    before_message_id: Optional[int] = None,
+    db: MySQLConnection,
+    before_message_id: int | None = None,
 ) -> list[dict[str, str]]:
     cursor = db.cursor(dictionary=True)
     try:
@@ -509,7 +512,7 @@ def build_model_history(
 def create_streaming_records(
     session_id: int,
     content: str,
-    db: Any,
+    db: MySQLConnection,
 ) -> tuple[int, int, str]:
     generation_id = uuid.uuid4().hex
     cursor = db.cursor()
@@ -552,7 +555,7 @@ def create_streaming_records(
         cursor.close()
 
 
-def mark_message_as_stopped(message_id: int, db: Any) -> None:
+def mark_message_as_stopped(message_id: int, db: MySQLConnection) -> None:
     cursor = db.cursor()
     try:
         cursor.execute(
@@ -576,7 +579,7 @@ def mark_message_as_stopped(message_id: int, db: Any) -> None:
 
 
 def is_message_generation_active(
-    db: Any,
+    db: MySQLConnection,
     message_id: int,
     generation_id: str,
 ) -> bool:
@@ -606,8 +609,8 @@ def is_message_generation_active(
 def prepare_continue_generation(
     payload: SendMessageRequest,
     user_id: int,
-    db: Any,
-) -> dict[str, Any]:
+    db: MySQLConnection,
+) -> dict[str, object]:
     if payload.continue_from_message_id is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -640,7 +643,9 @@ def prepare_continue_generation(
     parsed_content = decode_assistant_content(str(target_message.get("content") or ""))
     existing_content = str(parsed_content["content"])
     existing_reasoning = str(parsed_content["reasoning"])
-    existing_citations = parse_citations(parsed_content["citations"])
+    existing_citations = parse_citations(
+        cast("list[dict[str, object]]", parsed_content["citations"])
+    )
     existing_search_status = parsed_content["search_status"]
     existing_thinking_time = int(target_message.get("thinking_time") or 0)
 
@@ -716,14 +721,16 @@ async def generate_response(
         continue_as_content_only = False
         if payload.continue_from_message_id is not None:
             continue_context = prepare_continue_generation(payload, user_id, db)
-            assistant_message_id = int(continue_context["assistant_message_id"])
+            assistant_message_id = int(cast("int", continue_context["assistant_message_id"]))
             generation_id = str(continue_context["generation_id"])
-            messages: list[dict[str, str]] = list(continue_context["messages"])
+            messages: list[dict[str, str]] = list(
+                cast("list[dict[str, str]]", continue_context["messages"])
+            )
             full_content = str(continue_context["existing_content"])
             full_reasoning = str(continue_context["existing_reasoning"])
-            citations = list(continue_context["citations"])
-            search_status = continue_context["search_status"]
-            final_thinking_time = int(continue_context["thinking_time"])
+            citations = list(cast("list[SearchCitation]", continue_context["citations"]))
+            search_status = cast("str | None", continue_context["search_status"])
+            final_thinking_time = int(cast("int", continue_context["thinking_time"]))
             continue_as_content_only = bool(full_content.strip())
 
             cursor = db.cursor()
@@ -767,7 +774,7 @@ async def generate_response(
             full_content = ""
             full_reasoning = ""
             citations: list[SearchCitation] = []
-            search_status: Optional[str] = None
+            search_status: str | None = None
             final_thinking_time = 0
 
         allow_reasoning = payload.is_deepthink and not continue_as_content_only
@@ -780,7 +787,7 @@ async def generate_response(
         )
 
         start_time = asyncio.get_running_loop().time()
-        reasoning_end_time: Optional[float] = None
+        reasoning_end_time: float | None = None
 
         if payload.continue_from_message_id is None and payload.is_search:
             search_query = payload.content.strip()
@@ -987,7 +994,7 @@ async def generate_response(
 async def send_message(
     payload: SendMessageRequest,
     user_id: int = Depends(get_current_user_id),
-    db: Any = Depends(get_db),
+    db: MySQLConnection = Depends(get_db),
 ) -> StreamingResponse:
     require_owned_session(payload.session_id, user_id, db)
     if payload.continue_from_message_id is None and not payload.content.strip():
@@ -1006,8 +1013,8 @@ async def send_message(
 async def stop_message_generation(
     message_id: int,
     user_id: int = Depends(get_current_user_id),
-    db: Any = Depends(get_db),
-) -> dict[str, Any]:
+    db: MySQLConnection = Depends(get_db),
+) -> dict[str, object]:
     message = require_owned_message(message_id, user_id, db)
     if str(message["role"]) != "assistant":
         return build_error_response(400, "仅支持停止助手消息生成")
@@ -1025,8 +1032,8 @@ async def stop_message_generation(
 @router.get("/sessions")
 async def get_sessions(
     user_id: int = Depends(get_current_user_id),
-    db: Any = Depends(get_db),
-) -> dict[str, Any]:
+    db: MySQLConnection = Depends(get_db),
+) -> dict[str, object]:
     cursor = db.cursor(dictionary=True)
     try:
         cursor.execute(
@@ -1041,7 +1048,8 @@ async def get_sessions(
         sessions = cursor.fetchall()
         return build_success_response({"sessions": sessions}, "获取成功")
     except Exception as exc:
-        return build_error_response(500, f"获取失败：{exc}")
+        logging.error("获取会话列表失败：%s", exc)
+        return build_error_response(500, "获取会话列表失败")
     finally:
         cursor.close()
 
@@ -1050,8 +1058,8 @@ async def get_sessions(
 async def create_session(
     title: str = "新对话",
     user_id: int = Depends(get_current_user_id),
-    db: Any = Depends(get_db),
-) -> dict[str, Any]:
+    db: MySQLConnection = Depends(get_db),
+) -> dict[str, object]:
     cursor = db.cursor()
     try:
         cursor.execute(
@@ -1062,7 +1070,8 @@ async def create_session(
         return build_success_response({"session_id": int(cursor.lastrowid)}, "创建成功")
     except Exception as exc:
         db.rollback()
-        return build_error_response(500, f"创建失败：{exc}")
+        logging.error("创建会话失败：%s", exc)
+        return build_error_response(500, "创建会话失败")
     finally:
         cursor.close()
 
@@ -1072,8 +1081,8 @@ async def rename_session(
     session_id: int,
     update: SessionUpdate,
     user_id: int = Depends(get_current_user_id),
-    db: Any = Depends(get_db),
-) -> dict[str, Any]:
+    db: MySQLConnection = Depends(get_db),
+) -> dict[str, object]:
     require_owned_session(session_id, user_id, db)
     cursor = db.cursor()
     try:
@@ -1085,7 +1094,8 @@ async def rename_session(
         return build_success_response(None, "重命名成功")
     except Exception as exc:
         db.rollback()
-        return build_error_response(500, f"重命名失败：{exc}")
+        logging.error("重命名会话失败：%s", exc)
+        return build_error_response(500, "重命名会话失败")
     finally:
         cursor.close()
 
@@ -1094,8 +1104,8 @@ async def rename_session(
 async def toggle_pin_session(
     session_id: int,
     user_id: int = Depends(get_current_user_id),
-    db: Any = Depends(get_db),
-) -> dict[str, Any]:
+    db: MySQLConnection = Depends(get_db),
+) -> dict[str, object]:
     cursor = db.cursor()
     try:
         cursor.execute(
@@ -1115,7 +1125,8 @@ async def toggle_pin_session(
         return build_success_response({"is_pinned": new_status}, "操作成功")
     except Exception as exc:
         db.rollback()
-        return build_error_response(500, f"操作失败：{exc}")
+        logging.error("更新会话状态失败：%s", exc)
+        return build_error_response(500, "更新会话状态失败")
     finally:
         cursor.close()
 
@@ -1124,8 +1135,8 @@ async def toggle_pin_session(
 async def delete_session(
     session_id: int,
     user_id: int = Depends(get_current_user_id),
-    db: Any = Depends(get_db),
-) -> dict[str, Any]:
+    db: MySQLConnection = Depends(get_db),
+) -> dict[str, object]:
     require_owned_session(session_id, user_id, db)
     cursor = db.cursor()
     try:
@@ -1138,7 +1149,8 @@ async def delete_session(
         return build_success_response(None, "删除成功")
     except Exception as exc:
         db.rollback()
-        return build_error_response(500, f"删除失败：{exc}")
+        logging.error("删除会话失败：%s", exc)
+        return build_error_response(500, "删除会话失败")
     finally:
         cursor.close()
 
@@ -1147,8 +1159,8 @@ async def delete_session(
 async def get_messages(
     session_id: int,
     user_id: int = Depends(get_current_user_id),
-    db: Any = Depends(get_db),
-) -> dict[str, Any]:
+    db: MySQLConnection = Depends(get_db),
+) -> dict[str, object]:
     require_owned_session(session_id, user_id, db)
     cursor = db.cursor(dictionary=True)
     try:
@@ -1180,7 +1192,8 @@ async def get_messages(
 
         return build_success_response({"messages": messages}, "获取成功")
     except Exception as exc:
-        return build_error_response(500, f"获取失败：{exc}")
+        logging.error("获取消息列表失败：%s", exc)
+        return build_error_response(500, "获取消息列表失败")
     finally:
         cursor.close()
 
@@ -1190,8 +1203,8 @@ async def update_message(
     message_id: int,
     update: MessageUpdate,
     user_id: int = Depends(get_current_user_id),
-    db: Any = Depends(get_db),
-) -> dict[str, Any]:
+    db: MySQLConnection = Depends(get_db),
+) -> dict[str, object]:
     message = require_owned_message(message_id, user_id, db)
     if str(message["role"]) != "user":
         return build_error_response(400, "当前仅支持编辑用户消息")
@@ -1210,7 +1223,8 @@ async def update_message(
         return build_success_response(None, "更新成功")
     except Exception as exc:
         db.rollback()
-        return build_error_response(500, f"更新失败：{exc}")
+        logging.error("更新消息失败：%s", exc)
+        return build_error_response(500, "更新消息失败")
     finally:
         cursor.close()
 
@@ -1220,8 +1234,8 @@ async def search_conversations(
     keyword: str = "",
     limit: int = 20,
     user_id: int = Depends(get_current_user_id),
-    db: Any = Depends(get_db),
-) -> dict[str, Any]:
+    db: MySQLConnection = Depends(get_db),
+) -> dict[str, object]:
     """
     搜索当前用户的所有会话标题与消息内容。
     说明：
@@ -1233,7 +1247,7 @@ async def search_conversations(
         return build_success_response({"results": []}, "搜索关键词为空")
 
     keyword_param = f"%{keyword.strip()}%"
-    results: list[dict[str, Any]] = []
+    results: list[dict[str, object]] = []
     seen_result_keys: set[str] = set()
 
     cursor = db.cursor(dictionary=True)
@@ -1309,7 +1323,8 @@ async def search_conversations(
 
         return build_success_response({"results": results}, "搜索成功")
     except Exception as exc:
-        return build_error_response(500, f"搜索失败：{exc}")
+        logging.error("搜索会话失败：%s", exc)
+        return build_error_response(500, "搜索会话失败")
     finally:
         cursor.close()
 
@@ -1317,10 +1332,10 @@ async def search_conversations(
 @router.delete("/sessions/{session_id}/messages")
 async def delete_messages(
     session_id: int,
-    after_id: Optional[int] = None,
+    after_id: int | None = None,
     user_id: int = Depends(get_current_user_id),
-    db: Any = Depends(get_db),
-) -> dict[str, Any]:
+    db: MySQLConnection = Depends(get_db),
+) -> dict[str, object]:
     require_owned_session(session_id, user_id, db)
     cursor = db.cursor()
     try:
@@ -1340,6 +1355,7 @@ async def delete_messages(
         return build_success_response({"deleted_count": deleted_count}, "删除成功")
     except Exception as exc:
         db.rollback()
-        return build_error_response(500, f"删除失败：{exc}")
+        logging.error("删除消息失败：%s", exc)
+        return build_error_response(500, "删除消息失败")
     finally:
         cursor.close()

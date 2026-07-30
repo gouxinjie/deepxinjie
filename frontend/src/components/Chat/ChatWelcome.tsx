@@ -13,7 +13,7 @@ const ChatWelcome: React.FC = () => {
   return (
     <div className={styles.container}>
       <div className={styles.logoTitle}>
-        <DeepXinjieLogo style={{marginTop:5}} size={40} />
+        <DeepXinjieLogo size={40} />
         <h1 className={styles.title}>我能帮你做什么？</h1>
       </div>
     </div>

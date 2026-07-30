@@ -1,4 +1,4 @@
-from typing import Any
+import os
 
 import uvicorn
 from dotenv import load_dotenv
@@ -14,12 +14,15 @@ from backend.routers.chat import initialize_chat_schema, router as chat_router
 
 app = FastAPI()
 
+# 允许跨域来源从环境变量读取，便于生产部署；缺省回退到本地开发地址。
 origins = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:5174",
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:3000,http://localhost:5173,http://localhost:5174,"
+        "http://127.0.0.1:5173,http://127.0.0.1:5174",
+    ).split(",")
+    if origin.strip()
 ]
 
 app.add_middleware(
@@ -37,8 +40,8 @@ app.include_router(auth_router)
 def build_error_response(
     code: int | str,
     message: str,
-    data: Any = None,
-) -> dict[str, Any]:
+    data: object | None = None,
+) -> dict[str, object]:
     """
     构造统一错误响应。
     """

@@ -1,9 +1,13 @@
 /**
  * @component DeepXinjieLogo
- * @description DeepXinjie 品牌 Logo 组件，斜切渐变卡片搭配对话气泡与 X 符号，兼顾 AI 会话语义与品牌辨识度
+ * @description DeepXinjie 品牌 Logo 组件。
+ *              设计理念「灵感火花」：圆角渐变方块底 + 主四角星火花与一颗小星点缀，
+ *              以 ✨ 火花意象表达「新解」的灵感与 AI 智能创见；
+ *              纯几何符号、不含任何字母、无对话气泡，造型简洁，
+ *              在 24px 小尺寸下依然清晰可辨，且随主题变量自适应配色。
  * @author gouxinjie
  * @created 2026-04-08
- * @updated 2026-07-29
+ * @updated 2026-07-30
  */
 import React from 'react';
 
@@ -30,39 +34,39 @@ const DeepXinjieLogo: React.FC<DeepXinjieLogoProps> = ({ size = 24, style }) => 
       aria-label="DeepXinjie Logo"
     >
       <defs>
-        <linearGradient id="dx-logo-bg" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse">
+        {/* 品牌渐变底，随主题变量（绿/蓝）自适应 */}
+        <linearGradient id="dx-logo-bg" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="var(--color-primary)" />
           <stop offset="60%" stopColor="var(--color-primary-hover)" />
           <stop offset="100%" stopColor="var(--color-primary-active)" />
         </linearGradient>
-        <linearGradient id="dx-logo-x" x1="8" y1="9" x2="13" y2="13" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="var(--color-primary)" />
-          <stop offset="100%" stopColor="var(--color-primary-active)" />
-        </linearGradient>
+        {/* 火花高光，强化「灵感」质感 */}
+        <radialGradient id="dx-logo-spark" cx="50%" cy="42%" r="62%">
+          <stop offset="0%" stopColor="#FFFFFF" />
+          <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0.86" />
+        </radialGradient>
       </defs>
 
-      {/* 斜切圆角卡片，右上切角增强品牌科技感与辨识度 */}
+      {/* 圆角方块底，应用渐变，构成标准 App 图标轮廓，提升辨识度 */}
+      <rect x="1.5" y="1.5" width="21" height="21" rx="4.5" fill="url(#dx-logo-bg)" />
+      {/* 内描边微光，增强边缘质感与层次 */}
+      <rect x="1.5" y="1.5" width="21" height="21" rx="4.5" fill="none" stroke="#FFFFFF" strokeOpacity="0.18" strokeWidth="0.8" />
+      {/* 左上角柔光，模拟光源，提升立体感 */}
+      <rect x="3.4" y="3.4" width="7" height="7" rx="3" fill="#FFFFFF" fillOpacity="0.1" />
+
+      {/* 主四角星火花柔光，营造灵感呼吸感 */}
+      <circle cx="11" cy="12" r="6.5" fill="#FFFFFF" fillOpacity="0.14" />
+      {/* 主四角星火花，象征「新解」核心灵感 */}
       <path
-        d="M4.5 2 H16 L22 8 V19.5 A2.5 2.5 0 0 1 19.5 22 H4.5 A2.5 2.5 0 0 1 2 19.5 V4.5 A2.5 2.5 0 0 1 4.5 2 Z"
-        fill="url(#dx-logo-bg)"
+        d="M11 6.5 C11.45 9.3 13.7 11.55 16.5 12 C13.7 12.45 11.45 14.7 11 17.5 C10.55 14.7 8.3 12.45 5.5 12 C8.3 11.55 10.55 9.3 11 6.5 Z"
+        fill="url(#dx-logo-spark)"
       />
-      {/* 左上角柔光，提升质感 */}
-      <rect x="3" y="3" width="8" height="8" rx="3.5" fill="#FFFFFF" fillOpacity="0.12" />
-      {/* 对话气泡，白色半透明，传达智能会话 */}
+      {/* 右上角小星点缀，强化「灵感迸发」的灵动意象 */}
       <path
-        d="M8 7 H14 C15 7 15.8 7.8 15.8 8.8 V12.5 C15.8 13.5 15 14.3 14 14.3 H11.4 L9 16.5 V14.3 H8 C7 14.3 6.2 13.5 6.2 12.5 V8.8 C6.2 7.8 7 7 8 7 Z"
+        d="M17.5 4.8 C17.7 6.1 18.9 7.3 20.2 7.5 C18.9 7.7 17.7 8.9 17.5 10.2 C17.3 8.9 16.1 7.7 14.8 7.5 C16.1 7.3 17.3 6.1 17.5 4.8 Z"
         fill="#FFFFFF"
-        fillOpacity="0.96"
+        fillOpacity="0.92"
       />
-      {/* 气泡内 X 形符号，呼应品牌名 Xinjie，强化识别 */}
-      <path
-        d="M9.5 9.8 L11.5 11.8 M11.5 9.8 L9.5 11.8"
-        stroke="url(#dx-logo-x)"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-      />
-      {/* 斜切处灵动光点，点缀 AI 智能感 */}
-      <circle cx="19" cy="4.6" r="1.2" fill="#FFFFFF" fillOpacity="0.9" />
     </svg>
   );
 };

@@ -1,26 +1,13 @@
 import os
-from typing import Generator
+from collections.abc import Generator
 
 import mysql.connector
 from dotenv import load_dotenv
-from mysql.connector import pooling
+from mysql.connector import MySQLConnection, pooling
 
 load_dotenv()
 
-
-def get_required_env(name: str) -> str:
-    """
-    获取数据库必填环境变量。
-
-    说明：
-    - 数据库密码属于敏感信息，禁止在代码中提供默认值。
-    - 若未配置则在启动阶段直接报错，避免误连到错误环境。
-    """
-    value = os.getenv(name)
-    if not value:
-        raise RuntimeError(f"缺少必填环境变量：{name}")
-    return value
-
+from .common import get_required_env
 
 db_config = {
     "host": os.getenv("DB_HOST", "localhost"),
@@ -35,18 +22,28 @@ db_config = {
 connection_pool = pooling.MySQLConnectionPool(**db_config)
 
 
-def get_db() -> Generator[mysql.connector.MySQLConnection, None, None]:
+def get_db() -> Generator[MySQLConnection, None, None]:
     """
     获取数据库连接。
 
     返回：
     - 连接池中的一个 MySQL 连接。
 
+    说明：
+    - 作为 FastAPI 依赖使用，请求结束时自动归还连接。
+    - 业务处理中发生异常时统一执行 rollback，避免残留未提交事务污染连接池。
+
     异常：
     - 当连接池获取连接失败时，由 mysql-connector 抛出异常。
     """
-    conn = connection_pool.get_connection()
+    conn = None
     try:
+        conn = connection_pool.get_connection()
         yield conn
+    except Exception:
+        if conn is not None:
+            conn.rollback()
+        raise
     finally:
-        conn.close()
+        if conn is not None:
+            conn.close()

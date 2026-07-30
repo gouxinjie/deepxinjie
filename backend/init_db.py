@@ -5,15 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
-def get_required_env(name: str) -> str:
-    """
-    获取数据库初始化脚本所需的必填环境变量。
-    """
-    value = os.getenv(name)
-    if not value:
-        raise RuntimeError(f"缺少必填环境变量：{name}")
-    return value
+from common import get_required_env
 
 
 conn = None

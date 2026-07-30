@@ -1,4 +1,3 @@
-import os
 from typing import Optional
 
 import jwt
@@ -8,18 +7,7 @@ from jwt import ExpiredSignatureError, InvalidTokenError
 
 load_dotenv()
 
-
-def get_required_env(name: str) -> str:
-    """
-    获取必填环境变量。
-    @param name - 环境变量名称
-    @returns 环境变量值
-    @throws RuntimeError 当环境变量缺失时抛出异常
-    """
-    value = os.getenv(name)
-    if not value:
-        raise RuntimeError(f"缺少必填环境变量：{name}")
-    return value
+from .common import get_required_env
 
 
 JWT_SECRET = get_required_env("JWT_SECRET")

@@ -2,8 +2,10 @@ import hashlib
 import os
 import re
 import secrets
-from datetime import datetime, timedelta
-from typing import Any, Literal, Optional
+from datetime import datetime, timedelta, timezone
+from typing import Literal
+
+from mysql.connector import MySQLConnection
 
 import jwt
 from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response, status
@@ -52,7 +54,7 @@ class RegisterRequest(BaseModel):
     password: str
 
 
-def build_success_response(data: Any, message: str = "操作成功") -> dict[str, Any]:
+def build_success_response(data: object | None = None, message: str = "操作成功") -> dict[str, object]:
     """
     构造统一成功响应。
     @param data - 响应数据
@@ -67,7 +69,7 @@ def build_success_response(data: Any, message: str = "操作成功") -> dict[str
     }
 
 
-def build_error_response(code: int | str, message: str, data: Any = None) -> dict[str, Any]:
+def build_error_response(code: int | str, message: str, data: object | None = None) -> dict[str, object]:
     """
     构造统一错误响应。
     @param code - 业务状态码
@@ -165,7 +167,7 @@ def create_access_token(user_id: int) -> str:
     @param user_id - 用户 ID
     @returns Access Token
     """
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     return jwt.encode(
         {
             "user_id": user_id,
@@ -197,7 +199,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def build_user_data(user_row: dict[str, Any]) -> dict[str, Any]:
+def build_user_data(user_row: dict[str, object]) -> dict[str, object]:
     """
     构造前端用户数据。
     @param user_row - 数据库用户记录
@@ -348,7 +350,7 @@ def initialize_auth_schema() -> None:
         db.close()
 
 
-def cleanup_expired_sessions(db: Any) -> None:
+def cleanup_expired_sessions(db: MySQLConnection) -> None:
     """
     将已过期会话标记为失效。
     @param db - 数据库连接
@@ -367,7 +369,7 @@ def cleanup_expired_sessions(db: Any) -> None:
         cursor.close()
 
 
-def load_user_by_id(user_id: int, db: Any) -> dict[str, Any]:
+def load_user_by_id(user_id: int, db: MySQLConnection) -> dict[str, object]:
     """
     根据用户 ID 查询用户信息。
     @param user_id - 用户 ID
@@ -394,7 +396,7 @@ def load_user_by_id(user_id: int, db: Any) -> dict[str, Any]:
     return build_user_data(user_row)
 
 
-def load_user_by_phone(phone: str, db: Any) -> Optional[dict[str, Any]]:
+def load_user_by_phone(phone: str, db: MySQLConnection) -> dict[str, object] | None:
     """
     根据手机号查询用户信息。
     @param phone - 手机号
@@ -412,7 +414,7 @@ def load_user_by_phone(phone: str, db: Any) -> Optional[dict[str, Any]]:
         cursor.close()
 
 
-def create_user_with_password(phone: str, nickname: str, password: str, db: Any) -> int:
+def create_user_with_password(phone: str, nickname: str, password: str, db: MySQLConnection) -> int:
     """
     创建账号密码用户。
     @param phone - 手机号
@@ -440,8 +442,8 @@ def create_user_session(
     user_id: int,
     request: Request,
     response: Response,
-    db: Any,
-) -> dict[str, Any]:
+    db: MySQLConnection,
+) -> dict[str, object]:
     """
     创建登录会话并写入 Cookie。
     @param user_id - 用户 ID
@@ -454,7 +456,10 @@ def create_user_session(
 
     refresh_token = generate_refresh_token()
     csrf_token = generate_csrf_token()
-    expire_time = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    # 数据库 DATETIME 不保存时区，按 UTC 存储为 naive，避免带时区对象引发时区转换歧义
+    expire_time = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(
+        days=REFRESH_TOKEN_EXPIRE_DAYS
+    )
     user_agent = request.headers.get("user-agent", "")[:255]
     ip_address = get_request_ip(request)[:64]
 
@@ -500,7 +505,7 @@ def create_user_session(
     }
 
 
-def get_session_by_refresh_token(refresh_token: str, db: Any) -> Optional[dict[str, Any]]:
+def get_session_by_refresh_token(refresh_token: str, db: MySQLConnection) -> dict[str, object] | None:
     """
     根据 Refresh Token 查询有效会话。
     @param refresh_token - Refresh Token
@@ -528,13 +533,21 @@ def get_session_by_refresh_token(refresh_token: str, db: Any) -> Optional[dict[s
         return None
 
     expire_time = session_row.get("expire_time")
-    if isinstance(expire_time, datetime) and expire_time <= datetime.utcnow():
-        return None
+    now_utc = datetime.now(timezone.utc)
+    if isinstance(expire_time, datetime):
+        # 数据库 DATETIME 不保存时区，存储时按 UTC 写入，读出后归一化为 UTC 再比较
+        expire_aware = (
+            expire_time
+            if expire_time.tzinfo is not None
+            else expire_time.replace(tzinfo=timezone.utc)
+        )
+        if expire_aware <= now_utc:
+            return None
 
     return session_row
 
 
-def validate_csrf_token(session_row: dict[str, Any], csrf_token: Optional[str]) -> None:
+def validate_csrf_token(session_row: dict[str, object], csrf_token: str | None) -> None:
     """
     校验 CSRF Token。
     @param session_row - 会话记录
@@ -560,8 +573,8 @@ def rotate_user_session(
     user_id: int,
     request: Request,
     response: Response,
-    db: Any,
-) -> dict[str, Any]:
+    db: MySQLConnection,
+) -> dict[str, object]:
     """
     轮换会话令牌并返回新的 Access Token。
     @param session_id - 会话 ID
@@ -573,7 +586,10 @@ def rotate_user_session(
     """
     refresh_token = generate_refresh_token()
     csrf_token = generate_csrf_token()
-    expire_time = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    # 数据库 DATETIME 不保存时区，按 UTC 存储为 naive，避免带时区对象引发时区转换歧义
+    expire_time = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(
+        days=REFRESH_TOKEN_EXPIRE_DAYS
+    )
     user_agent = request.headers.get("user-agent", "")[:255]
     ip_address = get_request_ip(request)[:64]
 
@@ -617,7 +633,7 @@ def rotate_user_session(
     }
 
 
-def invalidate_session_by_refresh_token(refresh_token: str, db: Any) -> None:
+def invalidate_session_by_refresh_token(refresh_token: str, db: MySQLConnection) -> None:
     """
     将 Refresh Token 对应会话置为失效。
     @param refresh_token - Refresh Token
@@ -647,7 +663,7 @@ async def register(
     request: Request,
     response: Response,
     db=Depends(get_db),
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """
     注册新账号并创建登录会话。
     @param req - 注册请求体
@@ -687,7 +703,7 @@ async def login(
     request: Request,
     response: Response,
     db=Depends(get_db),
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """
     使用账号密码登录。
     @param req - 登录请求体
@@ -723,10 +739,10 @@ async def login(
 async def refresh_access_token(
     request: Request,
     response: Response,
-    refresh_token: Optional[str] = Cookie(default=None, alias=REFRESH_TOKEN_COOKIE_NAME),
-    x_csrf_token: Optional[str] = Header(default=None),
+    refresh_token: str | None = Cookie(default=None, alias=REFRESH_TOKEN_COOKIE_NAME),
+    x_csrf_token: str | None = Header(default=None),
     db=Depends(get_db),
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """
     刷新 Access Token。
     @param request - 当前请求对象
@@ -765,7 +781,7 @@ async def refresh_access_token(
 async def get_me(
     user_id: int = Depends(get_current_user_id),
     db=Depends(get_db),
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """
     获取当前登录用户信息。
     @param user_id - 当前登录用户 ID
@@ -779,10 +795,10 @@ async def get_me(
 @router.post("/logout")
 async def logout(
     response: Response,
-    refresh_token: Optional[str] = Cookie(default=None, alias=REFRESH_TOKEN_COOKIE_NAME),
-    x_csrf_token: Optional[str] = Header(default=None),
+    refresh_token: str | None = Cookie(default=None, alias=REFRESH_TOKEN_COOKIE_NAME),
+    x_csrf_token: str | None = Header(default=None),
     db=Depends(get_db),
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """
     退出当前设备登录。
     @param response - 当前响应对象

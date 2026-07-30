@@ -10,7 +10,6 @@ import os
 import re
 from dataclasses import dataclass
 from html import unescape
-from typing import Any
 from urllib.parse import urlparse
 
 import requests
@@ -40,7 +39,7 @@ class SearchCitation:
     domain: str
     snippet: str
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> dict[str, object]:
         """
         将引用对象转换为可序列化字典。
         """
@@ -173,6 +172,27 @@ async def _search_single_query(query: str) -> list[dict[str, str]]:
     return []
 
 
+async def _resolve_snippet(item: dict[str, str]) -> str:
+    """
+    解析单条搜索结果的摘要：必要时并发抓取网页正文补充摘要。
+
+    说明：
+    - 仅当开启网页正文抓取且搜索摘要过短时，才发起额外网络请求。
+    - 抓取失败不影响其它结果，降级为原始摘要。
+    """
+    snippet = item["snippet"][:MAX_SNIPPET_LENGTH]
+    if SEARCH_FETCH_PAGE_CONTENT and len(snippet) < 180:
+        try:
+            page_summary = await asyncio.to_thread(_fetch_page_summary, item["url"])
+            if page_summary:
+                return page_summary
+        except requests.RequestException:
+            pass
+    if not snippet:
+        return "该搜索结果未返回可用摘要。"
+    return snippet
+
+
 async def prepare_search_context(user_question: str) -> tuple[list[SearchCitation], str, str]:
     """
     获取搜索引用与模型上下文。
@@ -192,13 +212,17 @@ async def prepare_search_context(user_question: str) -> tuple[list[SearchCitatio
     if not TAVILY_API_KEY:
         return [], "", "缺少 TAVILY_API_KEY，已回退为普通回答。"
 
+    # 多条查询并发执行，降低首字延迟（单条查询失败不影响其余结果）
+    query_results_list = await asyncio.gather(
+        *[_search_single_query(query) for query in queries],
+        return_exceptions=True,
+    )
     raw_results: list[dict[str, str]] = []
-    for query in queries:
-        try:
-            query_results = await _search_single_query(query)
-        except requests.RequestException:
+    for result in query_results_list:
+        if isinstance(result, Exception):
+            # 单条搜索异常（含网络错误）直接跳过，由上层优雅降级
             continue
-        raw_results.extend(query_results)
+        raw_results.extend(result)
 
     if not raw_results:
         return [], "", "未检索到可用网页结果，已回退为普通回答。"
@@ -217,19 +241,14 @@ async def prepare_search_context(user_question: str) -> tuple[list[SearchCitatio
     citations: list[SearchCitation] = []
     context_blocks: list[str] = []
 
-    for index, item in enumerate(deduplicated_results, start=1):
-        snippet = item["snippet"][:MAX_SNIPPET_LENGTH]
-        if SEARCH_FETCH_PAGE_CONTENT and len(snippet) < 180:
-            try:
-                page_summary = await asyncio.to_thread(_fetch_page_summary, item["url"])
-                if page_summary:
-                    snippet = page_summary
-            except requests.RequestException:
-                pass
+    # 并发抓取需要补充正文的网页摘要，避免逐条串行等待网络 IO
+    fetched_snippets = await asyncio.gather(
+        *[_resolve_snippet(item) for item in deduplicated_results]
+    )
 
-        if not snippet:
-            snippet = "该搜索结果未返回可用摘要。"
-
+    for index, (item, snippet) in enumerate(
+        zip(deduplicated_results, fetched_snippets), start=1
+    ):
         citation = SearchCitation(
             id=index,
             title=item["title"][:120],
