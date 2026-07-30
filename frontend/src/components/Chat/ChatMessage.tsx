@@ -5,8 +5,8 @@
  * @created 2026-03-16
  * @updated 2026-07-30
  */
-import React, { useEffect, useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import remarkMath from 'remark-math';
@@ -45,13 +45,11 @@ interface ChatMessageProps {
   onOpenCitations?: (payload: { message: Message; activeCitationId?: number }) => void;
 }
 
-interface CodeProps {
-  /** 节点内容 */
-  children?: React.ReactNode;
-  /** 代码块样式类名 */
-  className?: string;
+interface CodeBlockProps extends React.ComponentPropsWithoutRef<'code'> {
   /** 是否为行内代码 */
   inline?: boolean;
+  /** 是否处于流式生成阶段（用于跳过 Mermaid 实时渲染，避免每分片重渲染昂贵 SVG） */
+  isStreaming?: boolean;
 }
 
 /**
@@ -74,6 +72,70 @@ const getNodeText = (node: React.ReactNode): string => {
     return getNodeText((node.props as { children?: React.ReactNode }).children);
   }
   return '';
+};
+
+/**
+ * 代码块组件（定义为模块级，避免每次父组件重渲染时重建组件类型导致代码块子树卸载重挂）
+ * 负责语法高亮代码块渲染、复制 / 下载，以及 mermaid 图表渲染
+ */
+const CodeBlock: React.FC<CodeBlockProps> = ({ children, className, isStreaming = false, ...props }) => {
+  const [isCodeCopied, setIsCodeCopied] = useState(false);
+  const match = /language-(\w+)/.exec(className || '');
+  const language = match ? match[1] : '';
+  // 高亮后 children 为 React 元素数组，需递归提取纯文本再复制 / 下载
+  const code = getNodeText(children).replace(/\n$/, '');
+
+  // 语言标识为 mermaid 时，使用 Mermaid 组件渲染图表
+  if (language === 'mermaid') {
+    return <Mermaid chart={code} isStreaming={isStreaming} />;
+  }
+
+  const handleCopyCode = async () => {
+    await navigator.clipboard.writeText(code);
+    setIsCodeCopied(true);
+    window.setTimeout(() => setIsCodeCopied(false), 2000);
+  };
+
+  const handleDownloadCode = () => {
+    const blob = new Blob([code], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `code-${Date.now()}.${language || 'txt'}`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (!className) {
+    return (
+      <code className={className} {...props}>
+        {children}
+      </code>
+    );
+  }
+
+  return (
+    <div className={styles.codeBlockContainer}>
+      <div className={styles.codeBlockHeader}>
+        <span className={styles.codeLanguage}>{language || 'code'}</span>
+        <div className={styles.codeActions}>
+          <button className={styles.codeActionBtn} onClick={handleCopyCode}>
+            {isCodeCopied ? <Check size={14} /> : <Copy size={14} />}
+            <span>{isCodeCopied ? '已复制' : '复制'}</span>
+          </button>
+          <button className={styles.codeActionBtn} onClick={handleDownloadCode}>
+            <Download size={14} />
+            <span>下载</span>
+          </button>
+        </div>
+      </div>
+      <pre className={className}>
+        <code className={className} {...props}>
+          {children}
+        </code>
+      </pre>
+    </div>
+  );
 };
 
 const ChatMessage: React.FC<ChatMessageProps> = ({
@@ -132,21 +194,74 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
     };
   }, [message.isThinking, message.thinkingTime]);
 
-  const handleCitationJump = (citationId: number) => {
-    if (!message.citations || message.citations.length === 0) {
-      return;
+  // 缓存回调引用，保证 message 未变化时 handleCitationJump 引用稳定，进而使 markdownComponents 能复用
+  const handleCitationJump = useCallback(
+    (citationId: number) => {
+      if (!message.citations || message.citations.length === 0) {
+        return;
+      }
+
+      onOpenCitations?.({ message, activeCitationId: citationId });
+    },
+    [message, onOpenCitations],
+  );
+
+  // 缓存 Markdown 组件映射，避免每次渲染重建 components 对象（尤其是 code 组件），减少 ReactMarkdown 重渲染开销
+  const markdownComponents = useMemo<Components>(
+    () => ({
+      a: ({ href, children, ...props }) => {
+        if (href?.startsWith('#citation-')) {
+          const matchedId = href.match(/#citation-(\d+)$/);
+          const citationId = matchedId ? Number.parseInt(matchedId[1], 10) : NaN;
+
+          return (
+            <button
+              type="button"
+              className={styles.inlineCitationLink}
+              onClick={() => {
+                if (!Number.isNaN(citationId)) {
+                  handleCitationJump(citationId);
+                }
+              }}
+            >
+              {children}
+            </button>
+          );
+        }
+
+        return (
+          <a href={href} {...props}>
+            {children}
+          </a>
+        );
+      },
+      pre: ({ node, children }) => {
+        // 内部为 mermaid 图表时去掉 pre 包裹，避免代码块样式与非法嵌套
+        const codeNode = node?.children?.[0] as { properties?: { className?: unknown } } | undefined;
+        const cls = codeNode?.properties?.className;
+        const isMermaid =
+          Array.isArray(cls) && cls.some((c) => typeof c === 'string' && c.includes('language-mermaid'));
+        if (isMermaid) {
+          return <>{children}</>;
+        }
+        return <pre>{children}</pre>;
+      },
+      code: (props) => <CodeBlock {...props} isStreaming={isStreaming} />,
+    }),
+    [isStreaming, handleCitationJump],
+  );
+
+  // 已完成的消息（占绝大多数）内容不变时无需重复执行正则替换，使用 useMemo 缓存
+  const contentWithCitationLinks = useMemo(() => {
+    if (!message.citations?.length) {
+      return message.content;
     }
-
-    onOpenCitations?.({ message, activeCitationId: citationId });
-  };
-
-  const contentWithCitationLinks = message.citations?.length
-    ? message.content.replace(/\[来源(\d+)\]/g, (_match, citationIdText: string) => {
-        const citationId = Number.parseInt(citationIdText, 10);
-        const hasCitation = message.citations?.some((citation) => citation.id === citationId);
-        return hasCitation ? `[来源${citationId}](#citation-${citationId})` : `[来源${citationId}]`;
-      })
-    : message.content;
+    return message.content.replace(/\[来源(\d+)\]/g, (_match, citationIdText: string) => {
+      const citationId = Number.parseInt(citationIdText, 10);
+      const hasCitation = message.citations?.some((citation) => citation.id === citationId);
+      return hasCitation ? `[来源${citationId}](#citation-${citationId})` : `[来源${citationId}]`;
+    });
+  }, [message.content, message.citations]);
 
   const syncEditTextareaHeight = () => {
     const element = editTextareaRef.current;
@@ -210,66 +325,6 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
     } finally {
       setIsEditSending(false);
     }
-  };
-
-  const CodeBlock = ({ children, className, ...props }: CodeProps & React.ComponentPropsWithoutRef<'code'>) => {
-    const [isCodeCopied, setIsCodeCopied] = useState(false);
-    const match = /language-(\w+)/.exec(className || '');
-    const language = match ? match[1] : '';
-    // 高亮后 children 为 React 元素数组，需递归提取纯文本再复制 / 下载
-    const code = getNodeText(children).replace(/\n$/, '');
-
-    // 语言标识为 mermaid 时，使用 Mermaid 组件渲染图表
-    if (language === 'mermaid') {
-      return <Mermaid chart={code} isStreaming={isStreaming} />;
-    }
-
-    const handleCopyCode = async () => {
-      await navigator.clipboard.writeText(code);
-      setIsCodeCopied(true);
-      window.setTimeout(() => setIsCodeCopied(false), 2000);
-    };
-
-    const handleDownloadCode = () => {
-      const blob = new Blob([code], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = `code-${Date.now()}.${language || 'txt'}`;
-      anchor.click();
-      URL.revokeObjectURL(url);
-    };
-
-    if (!className) {
-      return (
-        <code className={className} {...props}>
-          {children}
-        </code>
-      );
-    }
-
-    return (
-      <div className={styles.codeBlockContainer}>
-        <div className={styles.codeBlockHeader}>
-          <span className={styles.codeLanguage}>{language || 'code'}</span>
-          <div className={styles.codeActions}>
-            <button className={styles.codeActionBtn} onClick={handleCopyCode}>
-              {isCodeCopied ? <Check size={14} /> : <Copy size={14} />}
-              <span>{isCodeCopied ? '已复制' : '复制'}</span>
-            </button>
-            <button className={styles.codeActionBtn} onClick={handleDownloadCode}>
-              <Download size={14} />
-              <span>下载</span>
-            </button>
-          </div>
-        </div>
-        <pre className={className}>
-          <code className={className} {...props}>
-            {children}
-          </code>
-        </pre>
-      </div>
-    );
   };
 
   return (
@@ -356,48 +411,9 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
               ))}
             {message.content ? (
               <ReactMarkdown
-              remarkPlugins={[remarkGfm, remarkMath]}
-              rehypePlugins={[rehypeHighlight, rehypeKatex]}
-                components={{
-                  a: ({ href, children, ...props }) => {
-                    if (href?.startsWith('#citation-')) {
-                      const matchedId = href.match(/#citation-(\d+)$/);
-                      const citationId = matchedId ? Number.parseInt(matchedId[1], 10) : NaN;
-
-                      return (
-                        <button
-                          type="button"
-                          className={styles.inlineCitationLink}
-                          onClick={() => {
-                            if (!Number.isNaN(citationId)) {
-                              handleCitationJump(citationId);
-                            }
-                          }}
-                        >
-                          {children}
-                        </button>
-                      );
-                    }
-
-                    return (
-                      <a href={href} {...props}>
-                        {children}
-                      </a>
-                    );
-                  },
-                  pre: ({ node, children }) => {
-                    // 内部为 mermaid 图表时去掉 pre 包裹，避免代码块样式与非法嵌套
-                    const codeNode = node?.children?.[0] as { properties?: { className?: unknown } } | undefined;
-                    const cls = codeNode?.properties?.className;
-                    const isMermaid =
-                      Array.isArray(cls) && cls.some((c) => typeof c === 'string' && c.includes('language-mermaid'));
-                    if (isMermaid) {
-                      return <>{children}</>;
-                    }
-                    return <pre>{children}</pre>;
-                  },
-                  code: CodeBlock,
-                }}
+                remarkPlugins={[remarkGfm, remarkMath]}
+                rehypePlugins={[rehypeHighlight, rehypeKatex]}
+                components={markdownComponents}
               >
                 {contentWithCitationLinks}
               </ReactMarkdown>
@@ -475,4 +491,6 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
   );
 };
 
-export default ChatMessage;
+// 使用 React.memo 包裹：流式聊天时父组件每次 chunk 都会重建 messages 数组，
+// 未变化的消息引用应跳过重渲染，避免历史消息重复解析 Markdown 造成卡顿
+export default React.memo(ChatMessage);

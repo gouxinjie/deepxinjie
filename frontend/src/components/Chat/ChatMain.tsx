@@ -5,7 +5,7 @@
  * @created 2026-03-16
  * @updated 2026-04-08
  */
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDown, Share2, Zap } from 'lucide-react';
 import classNames from 'classnames';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
@@ -88,6 +88,23 @@ const ChatMain: React.FC<ChatMainProps> = ({
 
   const chatAreaRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  // 滚动事件 rAF 节流标记：避免高频 scroll 事件同步执行昂贵计算
+  const scrollRafRef = useRef<number | null>(null);
+  // 缓存每个消息 id 的 ref 回调，避免每次渲染都重建内联回调导致的重复赋值
+  const messageRefCallbacks = useRef<Map<string, (element: HTMLDivElement | null) => void>>(new Map());
+
+  // 为每个消息 id 返回稳定（缓存）的 ref 回调，避免每次渲染重建内联回调
+  const getMessageRefCallback = useCallback((id: string) => {
+    const callbacks = messageRefCallbacks.current;
+    let callback = callbacks.get(id);
+    if (!callback) {
+      callback = (element: HTMLDivElement | null) => {
+        messageRefs.current[id] = element;
+      };
+      callbacks.set(id, callback);
+    }
+    return callback;
+  }, []);
   const isStartingNewChat = useRef(false);
   const streamControllerRef = useRef<AbortController | null>(null);
   const streamingMessageIdRef = useRef<string | null>(null);
@@ -156,48 +173,57 @@ const ChatMain: React.FC<ChatMainProps> = ({
   /**
    * 聊天区域滚动事件处理：根据是否接近底部更新“自动滚动到底部”状态，并控制滚动指示器显隐。
    */
+  // 滚动处理使用 rAF 节流：高频 scroll 事件合并到下一帧执行，避免主线程抖动
   const handleScroll = () => {
-    const chatElement = chatAreaRef.current;
-    if (!chatElement) {
+    if (scrollRafRef.current !== null) {
       return;
     }
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = null;
+      const chatElement = chatAreaRef.current;
+      if (!chatElement) {
+        return;
+      }
 
-    const nearBottom = isNearBottom(chatElement, 40);
-    setShowScrollButton(!nearBottom);
+      const nearBottom = isNearBottom(chatElement, 40);
+      // 仅当值真正变化时才触发 setState，避免无差别重渲染
+      setShowScrollButton((prev) => (prev === !nearBottom ? prev : !nearBottom));
 
-    if (!isProgrammaticScrollRef.current) {
-      if (nearBottom) {
-        if (isStreamingRef.current) {
-          autoScrollEnabledRef.current = true;
+      if (!isProgrammaticScrollRef.current) {
+        if (nearBottom) {
+          if (isStreamingRef.current) {
+            autoScrollEnabledRef.current = true;
+          }
+        } else {
+          autoScrollEnabledRef.current = false;
+          cancelScheduledScroll();
         }
-      } else {
-        autoScrollEnabledRef.current = false;
-        cancelScheduledScroll();
-      }
-    }
-
-    if (anchorItems.length === 0) {
-      return;
-    }
-
-    const containerTop = chatElement.getBoundingClientRect().top;
-    let currentAnchor = anchorItems[0].id;
-
-    for (const anchor of anchorItems) {
-      const target = messageRefs.current[anchor.id];
-      if (!target) {
-        continue;
       }
 
-      const targetTop = target.getBoundingClientRect().top - containerTop;
-      if (targetTop <= 120) {
-        currentAnchor = anchor.id;
-      } else {
-        break;
+      if (anchorItems.length === 0) {
+        return;
       }
-    }
 
-    setActiveAnchorId(currentAnchor);
+      const containerTop = chatElement.getBoundingClientRect().top;
+      let currentAnchor = anchorItems[0].id;
+
+      for (const anchor of anchorItems) {
+        const target = messageRefs.current[anchor.id];
+        if (!target) {
+          continue;
+        }
+
+        const targetTop = target.getBoundingClientRect().top - containerTop;
+        if (targetTop <= 120) {
+          currentAnchor = anchor.id;
+        } else {
+          break;
+        }
+      }
+
+      // 仅当当前激活锚点变化时才更新状态
+      setActiveAnchorId((prev) => (prev === currentAnchor ? prev : currentAnchor));
+    });
   };
 
   /**
@@ -625,6 +651,13 @@ const ChatMain: React.FC<ChatMainProps> = ({
         }
 
         currentSessionId = response.data.data.session_id;
+        // 新建会话后立即写入全局会话列表，使侧边栏即时展示该会话（无需等待后续刷新）
+        useSessionStore.getState().addSession({
+          id: currentSessionId,
+          title,
+          update_time: new Date().toISOString(),
+          is_pinned: 0,
+        });
         isStartingNewChat.current = true;
         navigate(`/chat/${currentSessionId}`, { replace: true });
       } catch (error) {
@@ -1004,9 +1037,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
             {messages.map((message) => (
               <div
                 key={message.id}
-                ref={(element) => {
-                  messageRefs.current[message.id] = element;
-                }}
+                ref={getMessageRefCallback(message.id)}
               >
                 <ChatMessage
                   message={message}

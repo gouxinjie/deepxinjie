@@ -833,6 +833,17 @@ async def generate_response(
                 reasoning_effort=reasoning_effort,
                 extra_body=extra_body,
             )
+            # 流式节流：避免每个分片都查询数据库，降低流式过程中的 DB 往返开销。
+            # 每 16 个分片才检查一次“生成是否仍在进行”，未到检查点时视为继续（前端中断会触发 CancelledError 立即终止）。
+            chunk_index = 0
+
+            async def should_abort() -> bool:
+                nonlocal chunk_index
+                chunk_index += 1
+                if chunk_index % 16 != 0:
+                    return False
+                return not is_message_generation_active(db, assistant_message_id, generation_id)
+
             async for chunk in response:
                 if not chunk.choices:
                     continue
@@ -843,41 +854,23 @@ async def generate_response(
 
                 if reasoning_content:
                     reasoning_text = str(reasoning_content)
-                    if not is_message_generation_active(db, assistant_message_id, generation_id):
+                    # 流式过程中不再每个分片落盘（前端 IndexedDB 已负责增量缓存），
+                    # 仅在流式结束 / 中断时统一持久化，避免对完整累积内容做高频全量 UPDATE
+                    if await should_abort():
                         return
                     if allow_reasoning:
                         full_reasoning += reasoning_text
-                        persist_assistant_message(
-                            db=db,
-                            message_id=assistant_message_id,
-                            content=full_content,
-                            reasoning=full_reasoning,
-                            citations=citations,
-                            search_status=search_status,
-                            thinking_time=final_thinking_time,
-                            message_status=MESSAGE_STATUS_STREAMING,
-                        )
                         yield (
                             f"data: {json.dumps({'reasoning': reasoning_text}, ensure_ascii=False)}\n\n"
                         )
                     else:
                         full_content += reasoning_text
-                        persist_assistant_message(
-                            db=db,
-                            message_id=assistant_message_id,
-                            content=full_content,
-                            reasoning=full_reasoning,
-                            citations=citations,
-                            search_status=search_status,
-                            thinking_time=final_thinking_time,
-                            message_status=MESSAGE_STATUS_STREAMING,
-                        )
                         yield (
                             f"data: {json.dumps({'content': reasoning_text}, ensure_ascii=False)}\n\n"
                         )
 
                 if content_delta:
-                    if not is_message_generation_active(db, assistant_message_id, generation_id):
+                    if await should_abort():
                         return
                     if full_reasoning and reasoning_end_time is None:
                         reasoning_end_time = asyncio.get_running_loop().time()
@@ -887,16 +880,6 @@ async def generate_response(
                         )
 
                     full_content += str(content_delta)
-                    persist_assistant_message(
-                        db=db,
-                        message_id=assistant_message_id,
-                        content=full_content,
-                        reasoning=full_reasoning,
-                        citations=citations,
-                        search_status=search_status,
-                        thinking_time=final_thinking_time,
-                        message_status=MESSAGE_STATUS_STREAMING,
-                    )
                     yield (
                         f"data: {json.dumps({'content': content_delta}, ensure_ascii=False)}\n\n"
                     )
@@ -920,22 +903,12 @@ async def generate_response(
                 payload.is_deepthink,
                 allow_reasoning=allow_reasoning,
             ):
-                if not is_message_generation_active(db, assistant_message_id, generation_id):
+                if await should_abort():
                     return
                 if '"reasoning"' in chunk or '"content"' in chunk:
                     payload_data = json.loads(chunk.replace("data: ", "").strip())
                     if "reasoning" in payload_data:
                         full_reasoning += str(payload_data["reasoning"])
-                        persist_assistant_message(
-                            db=db,
-                            message_id=assistant_message_id,
-                            content=full_content,
-                            reasoning=full_reasoning,
-                            citations=citations,
-                            search_status=search_status,
-                            thinking_time=final_thinking_time,
-                            message_status=MESSAGE_STATUS_STREAMING,
-                        )
                     if "content" in payload_data:
                         if full_reasoning and reasoning_end_time is None:
                             reasoning_end_time = asyncio.get_running_loop().time()
@@ -944,16 +917,6 @@ async def generate_response(
                                 f"data: {json.dumps({'thinking_time': final_thinking_time}, ensure_ascii=False)}\n\n"
                             )
                         full_content += str(payload_data["content"])
-                        persist_assistant_message(
-                            db=db,
-                            message_id=assistant_message_id,
-                            content=full_content,
-                            reasoning=full_reasoning,
-                            citations=citations,
-                            search_status=search_status,
-                            thinking_time=final_thinking_time,
-                            message_status=MESSAGE_STATUS_STREAMING,
-                        )
                 yield chunk
 
         if full_reasoning and reasoning_end_time is None:
@@ -1058,7 +1021,7 @@ async def get_sessions(
     try:
         cursor.execute(
             """
-            SELECT *
+            SELECT id, title, update_time, is_pinned
             FROM chat_session
             WHERE user_id = %s AND status = 1
             ORDER BY is_pinned DESC, update_time DESC

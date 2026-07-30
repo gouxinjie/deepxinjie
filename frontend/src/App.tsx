@@ -1,16 +1,18 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 
-import ChatMain from './components/Chat/ChatMain';
-import ChatSidebar from './components/Chat/ChatSidebar';
-import Layout from './components/Layout/Layout';
 import styles from './App.module.scss';
 import useMobile from './hooks/useMobile';
-import LoginPage from './pages/Login';
-import AgreementPage from './pages/Agreement';
 import { initializeAuthSession } from './services/api';
 import { useAuthStore } from './store/authStore';
 import { useThemeStore } from './store/themeStore';
+
+// 路由级组件按需懒加载：拆分 react-markdown / mermaid / rehype-highlight 等重型依赖，缩小首屏 JS 体积
+const ChatMain = lazy(() => import('./components/Chat/ChatMain'));
+const ChatSidebar = lazy(() => import('./components/Chat/ChatSidebar'));
+const Layout = lazy(() => import('./components/Layout/Layout'));
+const LoginPage = lazy(() => import('./pages/Login'));
+const AgreementPage = lazy(() => import('./pages/Agreement'));
 
 const MOBILE_SIDEBAR_TRANSITION_MS = 300;
 
@@ -88,7 +90,11 @@ function App() {
 
   // 协议页为公开页面，不依赖登录态，优先于登录态判断直接渲染
   if (location.pathname.startsWith('/agreement')) {
-    return <AgreementPage />;
+    return (
+      <Suspense fallback={<div className={styles.app} />}>
+        <AgreementPage />
+      </Suspense>
+    );
   }
 
   if (!initialized || bootstrapping) {
@@ -98,7 +104,14 @@ function App() {
   if (!isAuthenticated) {
     return (
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/login"
+          element={
+            <Suspense fallback={<div className={styles.app} />}>
+              <LoginPage />
+            </Suspense>
+          }
+        />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
@@ -109,50 +122,52 @@ function App() {
   }
 
   return (
-    <div className={styles.app}>
-      <Layout
-        sidebar={
-          <ChatSidebar
-            isOpen={isSidebarOpen}
-            showOverlay={isMobile && isSidebarLayerActive}
-            onClose={() => setIsSidebarOpen(false)}
-            onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
-          />
-        }
-        isSidebarInteractive={isMobile ? isSidebarLayerActive : true}
-        isCollapsed={isCollapsed}
-        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-        onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
-      >
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <ChatMain
-                isDeepThink={isDeepThink}
-                setIsDeepThink={setIsDeepThink}
-                isSearch={isSearch}
-                setIsSearch={setIsSearch}
-                isCollapsed={isCollapsed}
-              />
-            }
-          />
-          <Route
-            path="/chat/:sessionId"
-            element={
-              <ChatMain
-                isDeepThink={isDeepThink}
-                setIsDeepThink={setIsDeepThink}
-                isSearch={isSearch}
-                setIsSearch={setIsSearch}
-                isCollapsed={isCollapsed}
-              />
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Layout>
-    </div>
+    <Suspense fallback={<div className={styles.app} />}>
+      <div className={styles.app}>
+        <Layout
+          sidebar={
+            <ChatSidebar
+              isOpen={isSidebarOpen}
+              showOverlay={isMobile && isSidebarLayerActive}
+              onClose={() => setIsSidebarOpen(false)}
+              onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
+            />
+          }
+          isSidebarInteractive={isMobile ? isSidebarLayerActive : true}
+          isCollapsed={isCollapsed}
+          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
+        >
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <ChatMain
+                  isDeepThink={isDeepThink}
+                  setIsDeepThink={setIsDeepThink}
+                  isSearch={isSearch}
+                  setIsSearch={setIsSearch}
+                  isCollapsed={isCollapsed}
+                />
+              }
+            />
+            <Route
+              path="/chat/:sessionId"
+              element={
+                <ChatMain
+                  isDeepThink={isDeepThink}
+                  setIsDeepThink={setIsDeepThink}
+                  isSearch={isSearch}
+                  setIsSearch={setIsSearch}
+                  isCollapsed={isCollapsed}
+                />
+              }
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Layout>
+      </div>
+    </Suspense>
   );
 }
 

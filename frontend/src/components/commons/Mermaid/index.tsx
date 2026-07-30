@@ -132,6 +132,12 @@ const Mermaid: React.FC<MermaidProps> = ({ chart, isStreaming = false }) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // 流式输出过程中图表源码不完整且逐片变化，跳过昂贵的 mermaid.render，
+    // 待流式结束（isStreaming=false）后由依赖变化触发一次性渲染，避免每分片重渲染卡顿
+    if (isStreaming) {
+      return;
+    }
+
     let cancelled = false;
 
     /**
@@ -197,4 +203,6 @@ const Mermaid: React.FC<MermaidProps> = ({ chart, isStreaming = false }) => {
   return <div ref={containerRef} className={styles.mermaidContainer} />;
 };
 
-export default Mermaid;
+// 使用 React.memo 包裹：父组件（ChatMessage）已 memo，Mermaid 自身也需 memo，
+// 避免流式过程中 chart 未变化的消息重复触发本组件渲染
+export default React.memo(Mermaid);

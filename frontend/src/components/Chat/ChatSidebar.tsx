@@ -5,7 +5,7 @@
  * @created 2026-03-16
  * @updated 2026-07-29
  */
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Check,
   CirclePlus,
@@ -368,7 +368,8 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
     return { pinned, today, last7Days, last30Days, older };
   }, [sessions]);
 
-  const { pinned, today, last7Days, last30Days, older } = groupSessions();
+  // groupSessions 仅在 sessions 变化时重算，用 useMemo 缓存其结果，避免每次渲染重复遍历分组
+  const { pinned, today, last7Days, last30Days, older } = useMemo(() => groupSessions(), [groupSessions]);
 
   /**
    * 渲染用户头像。

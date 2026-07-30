@@ -11,7 +11,7 @@ import classNames from 'classnames';
 
 import styles from './ChatInput.module.scss';
 import { useAuthStore } from '../../store/authStore';
-import { loadDraft, saveDraft } from '../../services/localCache';
+import { loadDraft, saveDraft, clearDraft } from '../../services/localCache';
 import useMobile from '../../hooks/useMobile';
 import Toast, { type ToastType } from '../../components/commons/Toast';
 
@@ -144,8 +144,16 @@ const ChatInput: React.FC<ChatInputProps> = ({
       return;
     }
 
+    // 捕获当前草稿键（新会话为 'new'），发送后立即清除本地草稿。
+    // 不依赖防抖写回，因为新会话的欢迎输入框在消息渲染后会被卸载，
+    // 导致清空草稿的写回被取消，进而使下次新建会话时残留上次输入内容。
+    const draftKey = draftSessionKey;
     onSend(nextMessage, isDeepThink, isSearch);
     setMessage('');
+
+    if (userId > 0) {
+      void clearDraft(userId, draftKey);
+    }
 
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
