@@ -20,7 +20,8 @@ origins = [
     for origin in os.getenv(
         "CORS_ORIGINS",
         "http://localhost:3000,http://localhost:5173,http://localhost:5174,"
-        "http://127.0.0.1:5173,http://127.0.0.1:5174",
+        "http://localhost:3600,"
+        "http://127.0.0.1:5173,http://127.0.0.1:5174,http://127.0.0.1:3600",
     ).split(",")
     if origin.strip()
 ]
@@ -111,4 +112,4 @@ async def root() -> dict[str, str]:
 
 if __name__ == "__main__":
     # 默认使用无热重载模式启动，避免在受限 Windows 环境下因权限导致失败。
-    uvicorn.run("main:app", host="127.0.0.1", port=8000)
+    uvicorn.run("main:app", host="127.0.0.1", port=3601)
