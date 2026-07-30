@@ -3,7 +3,7 @@
  * @description 聊天消息组件，负责渲染用户消息、模型回答、推理过程和消息操作
  * @author gouxinjie
  * @created 2026-03-16
- * @updated 2026-04-10
+ * @updated 2026-07-30
  */
 import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
@@ -53,6 +53,28 @@ interface CodeProps {
   /** 是否为行内代码 */
   inline?: boolean;
 }
+
+/**
+ * 递归提取 React 节点的纯文本内容
+ * 用于复制 / 下载被 rehype-highlight 拆分为多个 span 元素的高亮代码
+ * @param node - 任意 React 节点
+ * @returns 拼接后的纯文本字符串
+ */
+const getNodeText = (node: React.ReactNode): string => {
+  if (node === null || node === undefined || typeof node === 'boolean') {
+    return '';
+  }
+  if (typeof node === 'string' || typeof node === 'number') {
+    return String(node);
+  }
+  if (Array.isArray(node)) {
+    return node.map((item) => getNodeText(item)).join('');
+  }
+  if (React.isValidElement(node)) {
+    return getNodeText((node.props as { children?: React.ReactNode }).children);
+  }
+  return '';
+};
 
 const ChatMessage: React.FC<ChatMessageProps> = ({
   message,
@@ -190,28 +212,6 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
     }
   };
 
-  /**
-   * 递归提取 React 节点的纯文本内容
-   * 用于复制 / 下载被 rehype-highlight 拆分为多个 span 元素的高亮代码
-   * @param node - 任意 React 节点
-   * @returns 拼接后的纯文本字符串
-   */
-  const getNodeText = (node: React.ReactNode): string => {
-    if (node === null || node === undefined || typeof node === 'boolean') {
-      return '';
-    }
-    if (typeof node === 'string' || typeof node === 'number') {
-      return String(node);
-    }
-    if (Array.isArray(node)) {
-      return node.map((item) => getNodeText(item)).join('');
-    }
-    if (React.isValidElement(node)) {
-      return getNodeText((node.props as { children?: React.ReactNode }).children);
-    }
-    return '';
-  };
-
   const CodeBlock = ({ children, className, ...props }: CodeProps & React.ComponentPropsWithoutRef<'code'>) => {
     const [isCodeCopied, setIsCodeCopied] = useState(false);
     const match = /language-(\w+)/.exec(className || '');
@@ -221,7 +221,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
 
     // 语言标识为 mermaid 时，使用 Mermaid 组件渲染图表
     if (language === 'mermaid') {
-      return <Mermaid chart={code} />;
+      return <Mermaid chart={code} isStreaming={isStreaming} />;
     }
 
     const handleCopyCode = async () => {

@@ -283,6 +283,8 @@
   pre {
     margin: 0;
     width: 100%;
+    // 增加内边距，避免代码紧贴容器边框
+    padding: 16px;
     overflow-x: auto;
     background: transparent;
     @include scrollbar;
