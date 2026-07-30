@@ -9,10 +9,11 @@ import React from 'react';
 import type { ReactNode } from 'react';
 import { CirclePlus, Menu, PanelLeftOpen, Plus } from 'lucide-react';
 import classNames from 'classnames';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import DeepXinjieLogo from '../DeepXinjieLogo';
 import useMobile from '../../hooks/useMobile';
+import { useSessionStore } from '../../store/sessionStore';
 import styles from './Layout.module.scss';
 
 interface LayoutProps {
@@ -33,11 +34,23 @@ const Layout: React.FC<LayoutProps> = ({
   isCollapsed,
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const isMobile = useMobile();
   const isMobileSidebarHidden = isMobile && !isSidebarInteractive;
 
   /**
-   * 渲染移动端顶部导航栏。
+   * 从路由路径解析当前会话 id（移动端顶部栏需要展示会话标题）。
+   */
+  const sessionId = location.pathname.match(/\/chat\/(\d+)/)?.[1] ?? '';
+  /**
+   * 当前会话标题，用于在移动端顶部栏展示；无匹配时回退为“新会话”。
+   */
+  const currentSessionTitle = useSessionStore(
+    (state) => state.sessions.find((item) => item.id === Number.parseInt(sessionId, 10))?.title ?? ''
+  );
+
+  /**
+   * 渲染移动端顶部导航栏，包含菜单按钮、会话标题与新对话按钮。
    * @returns 移动端头部节点
    */
   const renderMobileHeader = () => (
@@ -45,6 +58,7 @@ const Layout: React.FC<LayoutProps> = ({
       <button className={styles.iconBtn} onClick={onToggleSidebar}>
         <Menu size={24} strokeWidth={1.5} />
       </button>
+      <div className={styles.mobileTitle}>{currentSessionTitle || '新会话'}</div>
       <div className={styles.mobileActions}>
         <button className={styles.iconBtn} onClick={() => navigate('/')}>
           <CirclePlus size={24} strokeWidth={1.5} />

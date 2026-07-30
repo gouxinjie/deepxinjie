@@ -10,7 +10,10 @@ import { ArrowUp, Brain, Globe, Paperclip } from 'lucide-react';
 import classNames from 'classnames';
 
 import styles from './ChatInput.module.scss';
+import { useAuthStore } from '../../store/authStore';
+import { loadDraft, saveDraft } from '../../services/localCache';
 import useMobile from '../../hooks/useMobile';
+import Toast, { type ToastType } from '../../components/commons/Toast';
 
 interface ChatInputProps {
   /** 发送消息回调 */
@@ -29,13 +32,15 @@ interface ChatInputProps {
   onToggleSearch?: (val: boolean) => void;
   /** 是否自动聚焦 */
   autoFocus?: boolean;
+  /** 会话 ID，用于绑定本地草稿（新会话为 undefined） */
+  sessionId?: string;
 }
 
 type ToastState = {
   /** 提示文案 */
   message: string;
   /** 提示类型 */
-  type: 'info' | 'success' | 'error';
+  type: ToastType;
 };
 
 const ChatInput: React.FC<ChatInputProps> = ({
@@ -47,6 +52,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
   onToggleDeepThink,
   onToggleSearch,
   autoFocus = false,
+  sessionId,
 }) => {
   const [message, setMessage] = useState('');
   const [isDeepThink, setIsDeepThink] = useState(initialDeepThink);
@@ -54,6 +60,40 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const [toast, setToast] = useState<ToastState | null>(null);
   const isMobile = useMobile();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // 当前登录用户 ID，用于本地草稿命名空间隔离
+  const userId = useAuthStore((state) => state.user?.id) ?? 0;
+
+  // 草稿恢复：切换会话时从本地读取未发送内容
+  const draftSessionKey = sessionId ?? 'new';
+  const draftLoadedRef = useRef(false);
+  useEffect(() => {
+    if (userId <= 0) {
+      return;
+    }
+    let cancelled = false;
+    draftLoadedRef.current = false;
+    void loadDraft(userId, draftSessionKey).then((draft) => {
+      if (!cancelled && draft) {
+        setMessage(draft);
+      }
+      draftLoadedRef.current = true;
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, draftSessionKey]);
+
+  // 草稿持久化：输入防抖写入本地，发送清空后自动清除
+  useEffect(() => {
+    if (userId <= 0 || !draftLoadedRef.current) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      void saveDraft(userId, draftSessionKey, message);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [message, userId, draftSessionKey]);
 
   /**
    * 同步输入框高度，确保桌面端与移动端切换时行数立即生效。
@@ -66,15 +106,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
     textareaRef.current.style.height = 'auto';
     textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
   };
-
-  useEffect(() => {
-    if (!toast) {
-      return undefined;
-    }
-
-    const timer = window.setTimeout(() => setToast(null), 3000);
-    return () => window.clearTimeout(timer);
-  }, [toast]);
 
   useEffect(() => {
     if (autoFocus && textareaRef.current) {
@@ -226,7 +257,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
         </div>
       </div>
 
-      {toast && <div className={classNames(styles.toast, styles[toast.type])}>{toast.message}</div>}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 };

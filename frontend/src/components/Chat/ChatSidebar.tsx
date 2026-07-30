@@ -31,11 +31,13 @@ import { useAuthStore } from '../../store/authStore';
 import { useSessionStore } from '../../store/sessionStore';
 import { useThemeStore } from '../../store/themeStore';
 import type { AuthUser, SessionItem } from '../../types/api';
+import { getCachedSessions, cacheSessions } from '../../services/localCache';
 import styles from './ChatSidebar.module.scss';
 import ChatSearchDialog from './ChatSearchDialog';
 import DeepXinjieLogo from '../DeepXinjieLogo';
 import LoginModal from '../commons/LoginModal';
 import Modal from '../commons/Modal';
+import Toast, { type ToastType } from '../commons/Toast';
 
 interface ChatSidebarProps {
   /** 移动端侧边栏是否展开 */
@@ -46,8 +48,6 @@ interface ChatSidebarProps {
   /** 桌面端切换折叠 */
   onToggleCollapse: () => void;
 }
-
-type ToastType = 'info' | 'success' | 'error';
 
 interface ToastState {
   /** 提示文案 */
@@ -146,10 +146,25 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
    * 获取会话列表。
    */
   const fetchSessions = useCallback(async () => {
+    // 优先从本地缓存秒级渲染会话列表
+    if (user) {
+      try {
+        const cached = await getCachedSessions(user.id);
+        if (cached.length > 0) {
+          setSessions(cached);
+        }
+      } catch {
+        // 本地读取失败不影响网络同步
+      }
+    }
+
     try {
       const response = await sessionApi.list();
       if (response.data.success) {
         setSessions(response.data.data.sessions);
+        if (user) {
+          void cacheSessions(user.id, response.data.data.sessions);
+        }
         return;
       }
 
@@ -157,16 +172,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
     } catch (error) {
       showToast(extractApiErrorMessage(error), 'error');
     }
-  }, []);
-
-  useEffect(() => {
-    if (!toast) {
-      return undefined;
-    }
-
-    const timer = window.setTimeout(() => setToast(null), 3000);
-    return () => window.clearTimeout(timer);
-  }, [toast]);
+  }, [user]);
 
   useEffect(() => {
     const handleClickOutside = (event: PointerEvent) => {
@@ -638,7 +644,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
           )}
         </div>
 
-        {toast && <div className={classNames(styles.toast, styles[toast.type])}>{toast.message}</div>}
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
         <Modal
           visible={deleteConfirmId !== null}

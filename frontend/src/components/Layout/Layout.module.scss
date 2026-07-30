@@ -57,6 +57,20 @@
   gap: 16px;
 }
 
+/* 移动端顶部栏会话标题，占据中间剩余空间，超长省略避免挤压按钮 */
+.mobileTitle {
+  flex: 1;
+  @include flex(row, flex-start, center);
+  min-width: 0;
+  padding: 0 12px;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-medium;
+  color: $color-text-main;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .iconBtn {
   @include flex-center;
   width: 40px;

@@ -78,6 +78,75 @@
   padding: 40px 20px 200px;
 }
 
+// 版本号更新标题栏：占满宽度，位于滚动区域上方，始终显示在最顶部，不被消息遮挡
+// 使用 min-height 而非固定高度，标题较长时可自动增高，确保完整显示不被截断
+.versionHeader {
+  flex-shrink: 0;
+  min-height: 60px;
+  width: 100%;
+  @include flex(row, space-between, center);
+  padding: 0 20px;
+  background-color: $color-bg;
+  border-bottom: 1px solid $color-border-light;
+  gap: 12px;
+}
+
+.versionInfo {
+  @include flex(column, flex-start, flex-start);
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+// 标题文本：允许换行、禁止省略号，确保会话标题完整展示
+.versionTitle {
+  font-size: $font-size-lg;
+  font-weight: 600;
+  color: $color-text-main;
+  line-height: 1.4;
+  letter-spacing: 0.2px;
+  white-space: normal;
+  word-break: break-word;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.versionModel {
+  @include flex(row, flex-start, center);
+  gap: 4px;
+  font-size: $font-size-sm;
+  color: $color-primary;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.versionIcon {
+  color: $color-primary;
+  flex-shrink: 0;
+}
+
+.versionShareBtn {
+  @include flex-center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background-color: transparent;
+  color: $color-text-tertiary;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+
+  &:hover {
+    background-color: $color-bg-soft;
+    color: $color-primary;
+  }
+
+  &:active {
+    transform: scale(0.94);
+  }
+}
+
 .scrollDownButton {
   position: absolute;
   bottom: 180px;
@@ -210,6 +279,11 @@
   .messagesList {
     padding: 0 5px 160px;
     gap: 0;
+  }
+
+  /* 移动端标题已上移到 Layout 顶部栏，此处不再展示版本号标题栏 */
+  .versionHeader {
+    display: none;
   }
 
   .inputArea {
