@@ -1,0 +1,70 @@
+# =============================================================
+# DeepXinjie 生产编排（部署目录：/var/www/chat）
+# 目录内需同时存在：docker-compose.yml、.env、schema.sql
+# 常用命令：
+#   docker compose pull && docker compose up -d
+#   docker compose logs -f api
+# =============================================================
+
+services:
+  # ---------- MySQL 8：仅在 Docker 内网可访问，不占用宿主机端口 ----------
+  db:
+    image: mysql:8.0
+    container_name: deepxinjie-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      # 数据持久化，切勿使用 docker compose down -v
+      - mysql_data:/var/lib/mysql
+      # 首次启动（数据卷为空时）自动执行建表脚本
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${DB_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - deepxinjie
+
+  # ---------- FastAPI 后端 ----------
+  api:
+    image: ${REGISTRY}/${NAMESPACE}/deepxinjie-api:${IMAGE_TAG}
+    container_name: deepxinjie-api
+    restart: always
+    # 数据库、JWT、模型密钥等全部来自同目录 .env
+    env_file:
+      - ./.env
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "3601"
+    networks:
+      - deepxinjie
+
+  # ---------- 前端静态资源 + 内层反向代理 ----------
+  # 仅绑定回环地址，由宿主机已有的 nginx 转发，避免与 80 端口冲突
+  web:
+    image: ${REGISTRY}/${NAMESPACE}/deepxinjie-web:${IMAGE_TAG}
+    container_name: deepxinjie-web
+    restart: always
+    depends_on:
+      - api
+    ports:
+      - "127.0.0.1:3610:80"
+    networks:
+      - deepxinjie
+
+networks:
+  deepxinjie:
+    driver: bridge
+
+volumes:
+  mysql_data:

@@ -1,0 +1,38 @@
+# =========================
+# Docker 构建上下文忽略规则
+# 避免把依赖目录、构建产物与敏感配置打进镜像
+# =========================
+
+# 依赖与构建产物
+**/node_modules
+**/dist
+**/dist-ssr
+**/.vite
+**/*.tsbuildinfo
+
+# Python 缓存与虚拟环境
+**/__pycache__
+**/*.py[cod]
+**/.venv
+**/venv
+**/.pytest_cache
+**/.mypy_cache
+
+# 敏感配置：生产环境变量由服务器上的 .env 提供，禁止进入镜像
+**/.env
+**/.env.*
+!**/.env.example
+
+# 版本控制与 CI
+.git
+.gitignore
+.github
+
+# 文档与本地脚本
+doc
+*.md
+start.bat
+
+# 日志
+**/*.log
+**/*.err
