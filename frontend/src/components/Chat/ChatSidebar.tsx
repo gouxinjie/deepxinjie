@@ -56,15 +56,6 @@ interface ToastState {
   type: ToastType;
 }
 
-const AVATAR_GRADIENTS: readonly [string, string][] = [
-  ['#2563eb', '#60a5fa'],
-  ['#0891b2', '#22d3ee'],
-  ['#7c3aed', '#a78bfa'],
-  ['#ea580c', '#fb923c'],
-  ['#db2777', '#f472b6'],
-  ['#059669', '#34d399'],
-];
-
 /**
  * 基于昵称生成稳定哈希，用于映射默认头像颜色。
  * @param text - 输入文本
@@ -97,15 +88,12 @@ const getAvatarInitial = (nickname: string): string => {
 
 /**
  * 获取默认头像渐变样式。
- * @param nickname - 用户昵称
+ * @param _nickname - 用户昵称（保留参数，保持接口兼容）
  * @returns 头像背景样式
  */
-const getAvatarStyle = (nickname: string): React.CSSProperties => {
-  const gradientIndex = getStableHash(nickname) % AVATAR_GRADIENTS.length;
-  const [startColor, endColor] = AVATAR_GRADIENTS[gradientIndex];
-
+const getAvatarStyle = (_nickname: string): React.CSSProperties => {
   return {
-    background: `linear-gradient(135deg, ${startColor} 0%, ${endColor} 100%)`,
+    background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-active) 100%)',
   };
 };
 

@@ -1,28 +1,27 @@
 import os
 from collections.abc import Generator
 
-import mysql.connector
+import mysql.connector.pooling
 from dotenv import load_dotenv
-from mysql.connector import MySQLConnection, pooling
+from mysql.connector.pooling import PooledMySQLConnection
 
-load_dotenv()
+# 根据当前文件路径定位 .env，避免 --reload 模式下工作目录变化导致找不到
+_ = load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 from .common import get_required_env
 
-db_config = {
-    "host": os.getenv("DB_HOST", "localhost"),
-    "user": os.getenv("DB_USER", "root"),
-    "password": get_required_env("DB_PASSWORD"),
-    "database": os.getenv("DB_NAME", "chat_platform"),
-    "pool_name": "chat_pool",
-    "pool_size": 5,
-}
-
 # 创建数据库连接池，供接口层复用。
-connection_pool = pooling.MySQLConnectionPool(**db_config)
+connection_pool = mysql.connector.pooling.MySQLConnectionPool(
+    pool_size=5,
+    pool_name="chat_pool",
+    host=os.getenv("DB_HOST", "localhost"),
+    user=os.getenv("DB_USER", "root"),
+    password=get_required_env("DB_PASSWORD"),
+    database=os.getenv("DB_NAME", "chat_platform"),
+)
 
 
-def get_db() -> Generator[MySQLConnection, None, None]:
+def get_db() -> Generator[PooledMySQLConnection, None, None]:
     """
     获取数据库连接。
 

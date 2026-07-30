@@ -1,3 +1,4 @@
+import os
 from typing import Optional
 
 import jwt
@@ -5,7 +6,8 @@ from dotenv import load_dotenv
 from fastapi import Header, HTTPException, status
 from jwt import ExpiredSignatureError, InvalidTokenError
 
-load_dotenv()
+# 根据当前文件路径定位 .env，避免 --reload 模式下工作目录变化导致找不到
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 from .common import get_required_env
 
