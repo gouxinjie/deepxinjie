@@ -13,7 +13,7 @@
   width: 368px;
   display: flex;
   flex-direction: column;
-  border-left: 1px solid rgba(15, 23, 42, 0.08);
+  border-left: 1px solid $color-border-sidebar; // 使用主题感知边框，兼容深色模式
   border-radius: 0;
   background: $color-bg;
   box-shadow: -10px 0 30px rgba(15, 23, 42, 0.04);
@@ -39,7 +39,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 18px 20px 14px;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  border-bottom: 1px solid $color-border-sidebar; // 使用主题感知边框，兼容深色模式
   background: $color-bg;
 }
 
@@ -54,8 +54,8 @@
   height: 30px;
   border-radius: 12px;
   @include flex-center;
-  background-color: rgba(15, 23, 42, 0.05);
-  color: $color-text-secondary;
+  background-color: $color-primary-light; // 使用主题色浅底
+  color: $color-primary; // 图标使用主题色
   flex-shrink: 0;
 }
 
@@ -114,22 +114,24 @@
   text-decoration: none;
   color: $color-text-main;
   border-radius: 12px;
-  background: rgba(15, 23, 42, 0.04);
+  border-left: 3px solid transparent; // 预留左侧主题色强调条，避免高亮态文字移位
+  background: rgba($color-primary, 0.05); // 使用主题色淡色底，统一侧栏风格
   transition:
     background-color 0.2s ease,
     box-shadow 0.2s ease,
     transform 0.2s ease;
 
   &:hover {
-    background: rgba(15, 23, 42, 0.06);
-    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.04);
+    background: rgba($color-primary, 0.08);
+    box-shadow: 0 6px 14px rgba($color-primary, 0.06);
     transform: translateY(-1px);
     text-decoration: none;
   }
 
   &.active {
-    background: rgba(15, 23, 42, 0.07);
-    box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
+    background: $color-primary-light; // 选中态使用主题色浅底
+    box-shadow: inset 0 0 0 1px rgba($color-primary, 0.4); // 主题色描边
+    border-left-color: $color-primary; // 左侧主题色强调条
   }
 }
 
@@ -171,7 +173,7 @@
   border-radius: 8px;
   flex-shrink: 0;
   @include flex-center;
-  background: linear-gradient(135deg, rgba(59, 91, 219, 0.92) 0%, rgba(77, 107, 254, 0.74) 100%);
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-hover 100%); // 站点徽标使用主题色渐变
   color: $white;
   font-size: 11px;
   font-weight: $font-weight-bold;
@@ -190,9 +192,9 @@
   height: 22px;
   padding: 0 6px;
   border-radius: $radius-full;
-  border: 1px solid rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba($color-primary, 0.25);
   background: rgba(255, 255, 255, 0.72);
-  color: $color-text-tertiary;
+  color: $color-primary; // 编号使用主题色
   font-size: 10px;
   font-weight: $font-weight-semibold;
   line-height: 20px;

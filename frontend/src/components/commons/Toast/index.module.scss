@@ -19,16 +19,19 @@
   // 提示类型：成功（绿）
   &.success {
     background-color: $color-success;
+    color: $white; // 实色背景固定白字，保证深色模式对比度
   }
 
   // 提示类型：错误（红）
   &.error {
     background-color: $color-danger;
+    color: $white;
   }
 
-  // 提示类型：信息（蓝）
+  // 提示类型：信息（主题色）——跟随用户在设置中选择的蓝/绿主色方案
   &.info {
-    background-color: $color-info;
+    background-color: $color-primary;
+    color: $white;
   }
 }
 
