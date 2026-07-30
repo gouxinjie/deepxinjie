@@ -1,7 +1,7 @@
 /**
  * @component ChatSearchDialog
  * @description 全局搜索浮层组件，支持搜索会话标题和消息内容
- * @author
+ * @author gouxinjie
  * @created 2026-07-29
  * @updated 2026-07-29
  */

@@ -1,6 +1,6 @@
 /**
  * @description 聊天界面使用的前端消息模型
- * @author
+ * @author gouxinjie
  * @created 2026-04-07
  * @updated 2026-04-10
  */

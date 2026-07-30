@@ -1,6 +1,6 @@
 /**
  * @description 会话列表跨组件共享状态
- * @author
+ * @author gouxinjie
  * @created 2026-07-29
  * @updated 2026-07-29
  */

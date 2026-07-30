@@ -1,7 +1,7 @@
 /**
  * @component Mermaid
  * @description 将 mermaid 图表源码渲染为 SVG 流程图 / 时序图 / 类图等
- * @author AI
+ * @author gouxinjie
  * @created 2026-07-29
  * @updated 2026-07-30
  */
