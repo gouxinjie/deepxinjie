@@ -133,6 +133,7 @@ function App() {
                 setIsDeepThink={setIsDeepThink}
                 isSearch={isSearch}
                 setIsSearch={setIsSearch}
+                isCollapsed={isCollapsed}
               />
             }
           />
@@ -144,6 +145,7 @@ function App() {
                 setIsDeepThink={setIsDeepThink}
                 isSearch={isSearch}
                 setIsSearch={setIsSearch}
+                isCollapsed={isCollapsed}
               />
             }
           />

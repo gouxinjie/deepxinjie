@@ -5,7 +5,8 @@
  * @created 2026-03-16
  * @updated 2026-04-10
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, type SyntheticEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Check, LockKeyhole, Smartphone, UserRound, X } from 'lucide-react';
 
 import { authApi, extractApiErrorMessage, persistAuthSession } from '../../../services/api';
@@ -43,6 +44,9 @@ const LoginModal: React.FC<LoginModalProps> = ({ visible, onClose, onSuccess }) 
   // 是否已阅读并同意用户协议与隐私政策；未勾选时禁用登录/注册按钮
   const [agreed, setAgreed] = useState(false);
 
+  // 路由跳转钩子，用于打开用户协议 / 隐私政策页面
+  const navigate = useNavigate();
+
   /**
    * 弹窗关闭时重置错误态。
    */
@@ -67,7 +71,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ visible, onClose, onSuccess }) 
    * 提交认证请求。
    * @param event - 表单提交事件
    */
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     // 未同意协议时拦截提交

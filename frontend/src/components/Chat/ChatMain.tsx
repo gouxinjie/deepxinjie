@@ -36,6 +36,8 @@ interface ChatMainProps {
   isSearch: boolean;
   /** 切换联网搜索模式的回调。 */
   setIsSearch: (val: boolean) => void;
+  /** 桌面端侧边栏是否收起；收起时浮动头部(floatingHeader)固定在左上角，标题栏需左移让位避免被遮挡。 */
+  isCollapsed?: boolean;
 }
 
 interface CitationPanelState {
@@ -53,6 +55,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
   setIsDeepThink,
   isSearch,
   setIsSearch,
+  isCollapsed = false,
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [shouldFocus, setShouldFocus] = useState(false);
@@ -954,7 +957,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
     >
       {/* 会话标题栏：固定高度并置于滚动区域上方，始终显示在最顶部且不被消息遮挡 */}
       {messages.length > 0 && !isLoading && (
-        <div className={styles.versionHeader}>
+        <div className={classNames(styles.versionHeader, { [styles.collapsedHeader]: isCollapsed })}>
           <div className={styles.versionInfo}>
             <span className={styles.versionTitle}>{currentSessionTitle || '\u65b0\u4f1a\u8bdd'}</span>
             <span className={styles.versionModel}>

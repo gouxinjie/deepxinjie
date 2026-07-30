@@ -89,6 +89,13 @@
   background-color: $color-bg;
   border-bottom: 1px solid $color-border-light;
   gap: 12px;
+
+  /* 桌面端侧边栏收起时，浮动头部固定在左上角，仅左侧标题信息块左移让位避免被遮挡 */
+  &.collapsedHeader {
+    .versionInfo {
+      margin-left: 160px;
+    }
+  }
 }
 
 .versionInfo {
