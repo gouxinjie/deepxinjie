@@ -26,13 +26,14 @@ const isValidPhone = (phone: string): boolean => /^1\d{10}$/.test(phone);
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [mode, setMode] = useState<AuthMode>('login');
-  const [phone, setPhone] = useState('');
+  // 体验用户默认值：手机号 13113183859，密码 123456，来访即可免注册直接登录
+  const [phone, setPhone] = useState('13113183859');
   const [nickname, setNickname] = useState('');
-  const [password, setPassword] = useState('');
+  const [password, setPassword] = useState('123456');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   // 是否已阅读并同意用户协议与隐私政策；未勾选时禁用登录/注册按钮
-  const [agreed, setAgreed] = useState(false);
+  const [agreed, setAgreed] = useState(true);
 
   /**
    * 切换认证模式。
