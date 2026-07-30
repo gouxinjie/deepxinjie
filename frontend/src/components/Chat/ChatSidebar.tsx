@@ -196,7 +196,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
     }
 
     void fetchSessions();
-  }, [fetchSessions, location.pathname, user]);
+  }, [fetchSessions, user]);
 
   /**
    * 新建会话。
