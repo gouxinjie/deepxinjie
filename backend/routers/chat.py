@@ -408,7 +408,7 @@ async def generate_session_title(user_text: str, assistant_text: str) -> str | N
     调用大模型为会话生成简短标题。
     说明：
     - 仅在会话首轮回复完成后触发
-    - 使用 deepseek-chat 非流式调用，成本低、速度快
+    - 使用 deepseek-v4-flash 非流式调用，成本低、速度快，并关闭 thinking 以避免冗余推理
     - 失败时返回 None，由调用方决定是否兜底
     """
     if client is None:
@@ -424,7 +424,7 @@ async def generate_session_title(user_text: str, assistant_text: str) -> str | N
 
     try:
         response = await client.chat.completions.create(
-            model="deepseek-chat",
+            model="deepseek-v4-flash",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": context},
@@ -432,6 +432,8 @@ async def generate_session_title(user_text: str, assistant_text: str) -> str | N
             temperature=0.3,
             max_tokens=32,
             stream=False,
+            # 标题生成无需深度思考，显式关闭 thinking 以提升速度与稳定性
+            extra_body={"thinking": {"type": "disabled"}},
         )
         title = response.choices[0].message.content or ""
         title = title.strip().strip('"\'（）【】《》')
@@ -761,7 +763,9 @@ async def generate_response(
             final_thinking_time = 0
 
         allow_reasoning = payload.is_deepthink and not continue_as_content_only
-        model = "deepseek-reasoner" if allow_reasoning else "deepseek-chat"
+        # DeepSeek V4 系列统一使用 deepseek-v4-flash；深度思考通过 thinking 参数开启，
+        # 不再依赖旧的 deepseek-reasoner 独立模型（官方已于 2026-07-24 停用旧别名）。
+        model = "deepseek-v4-flash"
 
         yield (
             f"data: {json.dumps({'message_id': assistant_message_id, 'message_status': MESSAGE_STATUS_STREAMING}, ensure_ascii=False)}\n\n"
@@ -814,10 +818,20 @@ async def generate_response(
             if client is None:
                 raise RuntimeError("未配置 DEEPSEEK_API_KEY")
 
+            # 组装额外参数：开启深度思考时通过 extra_body 传入 thinking（V4 不再使用独立 reasoner 模型）
+            extra_body: dict = {}
+            if allow_reasoning:
+                extra_body["thinking"] = {"type": "enabled"}
+                reasoning_effort = "high"
+            else:
+                reasoning_effort = None
+
             response = await client.chat.completions.create(
                 model=model,
                 messages=messages,
                 stream=True,
+                reasoning_effort=reasoning_effort,
+                extra_body=extra_body,
             )
             async for chunk in response:
                 if not chunk.choices:

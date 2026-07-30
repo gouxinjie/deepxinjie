@@ -6,10 +6,11 @@
  * @updated 2026-04-10
  */
 import React, { useEffect, useState } from 'react';
-import { LockKeyhole, Smartphone, UserRound, X } from 'lucide-react';
+import { Check, LockKeyhole, Smartphone, UserRound, X } from 'lucide-react';
 
 import { authApi, extractApiErrorMessage, persistAuthSession } from '../../../services/api';
 import styles from './index.module.scss';
+import { cn } from '../../../utils/cn';
 
 type AuthMode = 'login' | 'register';
 
@@ -39,6 +40,8 @@ const LoginModal: React.FC<LoginModalProps> = ({ visible, onClose, onSuccess }) 
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // 是否已阅读并同意用户协议与隐私政策；未勾选时禁用登录/注册按钮
+  const [agreed, setAgreed] = useState(false);
 
   /**
    * 弹窗关闭时重置错误态。
@@ -66,6 +69,12 @@ const LoginModal: React.FC<LoginModalProps> = ({ visible, onClose, onSuccess }) 
    */
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    // 未同意协议时拦截提交
+    if (!agreed) {
+      setError('请先阅读并同意《用户协议》与《隐私政策》');
+      return;
+    }
 
     const normalizedPhone = phone.trim();
     const normalizedNickname = nickname.trim();
@@ -206,12 +215,56 @@ const LoginModal: React.FC<LoginModalProps> = ({ visible, onClose, onSuccess }) 
 
           {error ? <div className={styles.errorMessage}>{error}</div> : null}
 
-          <button type="submit" className={styles.submitButton} disabled={loading}>
+          {/* 协议同意勾选区：未勾选时禁用提交按钮 */}
+          <div className={styles.agreement}>
+            <label className={styles.agreementCheck}>
+              <input
+                type="checkbox"
+                className={styles.agreementInput}
+                checked={agreed}
+                onChange={(event) => setAgreed(event.target.checked)}
+              />
+              <span
+                className={cn(styles.checkbox, agreed ? styles.checkboxChecked : '')}
+                aria-hidden="true"
+              >
+                {agreed ? <Check size={14} strokeWidth={3} /> : null}
+              </span>
+              <span className={styles.agreementText}>我已阅读并同意</span>
+            </label>
+            <span className={styles.agreementLinks}>
+              <button
+                type="button"
+                className={styles.link}
+                onClick={() => navigate('/agreement?type=user')}
+              >
+                《用户协议》
+              </button>
+              <span className={styles.agreementAnd}>与</span>
+              <button
+                type="button"
+                className={styles.link}
+                onClick={() => navigate('/agreement?type=privacy')}
+              >
+                《隐私政策》
+              </button>
+            </span>
+          </div>
+
+          <button type="submit" className={styles.submitButton} disabled={loading || !agreed}>
             {loading ? '处理中...' : mode === 'login' ? '登录' : '注册并登录'}
           </button>
 
           <p className={styles.footerText}>
-            {mode === 'login' ? '没有账号可直接切换到注册。' : '注册账号后会自动写入登录态。'}
+            <span>沪ICP备2026024942号</span>
+            <span className={styles.sep}>·</span>
+            <button type="button" className={styles.link} onClick={() => navigate('/agreement?type=user')}>
+              用户协议
+            </button>
+            <span className={styles.sep}>·</span>
+            <button type="button" className={styles.link} onClick={() => navigate('/agreement?type=privacy')}>
+              隐私政策
+            </button>
           </p>
         </form>
       </div>

@@ -10,7 +10,7 @@ import {
   Check,
   CirclePlus,
   Edit2,
-  HelpCircle,
+  FileText,
   LogOut,
   Moon,
   MoreHorizontal,
@@ -576,9 +576,15 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
                 <Settings size={18} strokeWidth={1.5} />
                 <span>系统设置</span>
               </div>
-              <div className={styles.userMenuItem}>
-                <HelpCircle size={18} strokeWidth={1.5} />
-                <span>帮助与反馈</span>
+              <div
+                className={styles.userMenuItem}
+                onClick={() => {
+                  setUserMenuOpen(false);
+                  navigate('/agreement?type=user');
+                }}
+              >
+                <FileText size={18} strokeWidth={1.5} />
+                <span>协议与隐私</span>
               </div>
 
               {/* 主色方案切换：以菜单项形式呈现 */}

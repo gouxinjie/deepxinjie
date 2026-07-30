@@ -178,6 +178,83 @@
   line-height: 1.7;
 }
 
+// ============ 协议勾选区 ============
+.agreement {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.agreementCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+// 隐藏原生复选框，使用自定义方框展示勾选态
+.agreementInput {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid $color-border;
+  border-radius: $radius-sm;
+  background: $color-input-bg;
+  color: #ffffff;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+// 勾选态：填充主色
+.checkboxChecked {
+  border-color: $color-primary;
+  background: $color-primary;
+}
+
+.agreementText {
+  user-select: none;
+}
+
+.agreementLinks {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.agreementAnd {
+  color: $color-text-tertiary;
+}
+
+// 协议 / 备案号链接按钮
+.link {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: $color-primary;
+  font-size: $font-size-sm;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.sep {
+  color: $color-text-tertiary;
+}
+
 @media (max-width: 640px) {
   .overlay {
     padding: 12px;

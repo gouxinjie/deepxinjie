@@ -7,6 +7,7 @@ import Layout from './components/Layout/Layout';
 import styles from './App.module.scss';
 import useMobile from './hooks/useMobile';
 import LoginPage from './pages/Login';
+import AgreementPage from './pages/Agreement';
 import { initializeAuthSession } from './services/api';
 import { useAuthStore } from './store/authStore';
 import { useThemeStore } from './store/themeStore';
@@ -84,6 +85,11 @@ function App() {
       window.clearTimeout(timer);
     };
   }, [isMobile, isSidebarOpen]);
+
+  // 协议页为公开页面，不依赖登录态，优先于登录态判断直接渲染
+  if (location.pathname.startsWith('/agreement')) {
+    return <AgreementPage />;
+  }
 
   if (!initialized || bootstrapping) {
     return <div className={styles.app} />;

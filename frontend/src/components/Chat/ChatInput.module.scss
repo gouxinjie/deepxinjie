@@ -97,7 +97,7 @@
   // 深度思考和智能搜索统一的激活态样式（参考 UI 图）
   &.active {
     background-color: $color-primary-light !important;
-    border-color: #b7c8fe !important;
+    border-color: $color-primary !important;
     color: $color-primary !important;
 
     svg {

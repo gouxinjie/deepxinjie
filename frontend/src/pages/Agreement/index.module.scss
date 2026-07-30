@@ -1,0 +1,128 @@
+@use "../../styles/variables.scss" as *;
+
+// 协议展示页样式：顶部返回栏 + 居中阅读容器 + 底部备案信息
+// 颜色取自主题变量，自动适配明暗主题与主色方案（蓝 / 绿）
+
+.page {
+  // 全局 body 已锁定滚动（overflow: hidden），协议页需自身成为滚动容器
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background: var(--color-bg);
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 56px;
+  padding: 0 16px;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: $radius-md;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+
+  &:hover {
+    background: var(--color-bg-hover);
+    color: var(--color-text-main);
+  }
+}
+
+.topTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: var(--color-text-main);
+  @include text-ellipsis;
+}
+
+.container {
+  flex: 1;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 32px 20px 40px;
+}
+
+.docTitle {
+  margin: 0 0 8px;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--color-text-main);
+}
+
+.meta {
+  margin: 0 0 28px;
+  font-size: $font-size-sm;
+  color: var(--color-text-tertiary);
+}
+
+.section {
+  margin-bottom: 24px;
+}
+
+.sectionTitle {
+  margin: 0 0 10px;
+  font-size: $font-size-lg;
+  font-weight: 600;
+  color: var(--color-text-main);
+}
+
+.paragraph {
+  margin: 0 0 10px;
+  font-size: $font-size-md;
+  line-height: 1.85;
+  color: var(--color-text-secondary);
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px;
+  font-size: $font-size-sm;
+  color: var(--color-text-tertiary);
+  border-top: 1px solid var(--color-border-light);
+}
+
+.footerLink {
+  padding: 0 2px;
+  border: none;
+  background: transparent;
+  color: $color-primary;
+  font-size: $font-size-sm;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 24px 16px 32px;
+  }
+
+  .docTitle {
+    font-size: 22px;
+  }
+}
