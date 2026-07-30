@@ -3,7 +3,7 @@
  * @description 会话侧边栏组件，负责展示会话列表、重命名、删除、置顶和登录入口
  * @author gouxinjie
  * @created 2026-03-16
- * @updated 2026-07-29
+ * @updated 2026-07-30
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -335,15 +335,12 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
     const pinned: SessionItem[] = [];
     const today: SessionItem[] = [];
     const last7Days: SessionItem[] = [];
-    const last30Days: SessionItem[] = [];
     const older: SessionItem[] = [];
 
     const now = new Date();
     const todayKey = now.toISOString().split('T')[0];
     const sevenDaysAgo = new Date(now);
     sevenDaysAgo.setDate(now.getDate() - 7);
-    const thirtyDaysAgo = new Date(now);
-    thirtyDaysAgo.setDate(now.getDate() - 30);
 
     sessions.forEach((session) => {
       if (session.is_pinned) {
@@ -358,18 +355,16 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
         today.push(session);
       } else if (updatedAt > sevenDaysAgo) {
         last7Days.push(session);
-      } else if (updatedAt > thirtyDaysAgo) {
-        last30Days.push(session);
       } else {
         older.push(session);
       }
     });
 
-    return { pinned, today, last7Days, last30Days, older };
+    return { pinned, today, last7Days, older };
   }, [sessions]);
 
   // groupSessions 仅在 sessions 变化时重算，用 useMemo 缓存其结果，避免每次渲染重复遍历分组
-  const { pinned, today, last7Days, last30Days, older } = useMemo(() => groupSessions(), [groupSessions]);
+  const { pinned, today, last7Days, older } = useMemo(() => groupSessions(), [groupSessions]);
 
   /**
    * 渲染用户头像。
@@ -529,13 +524,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
             <div className={styles.historyGroup}>
               <div className={styles.historyLabel}>7 天内</div>
               {last7Days.map(renderSessionItem)}
-            </div>
-          )}
-
-          {last30Days.length > 0 && (
-            <div className={styles.historyGroup}>
-              <div className={styles.historyLabel}>30 天内</div>
-              {last30Days.map(renderSessionItem)}
             </div>
           )}
 

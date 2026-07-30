@@ -3,11 +3,12 @@
  * @description 主聊天区域组件，负责会话消息渲染、流式对话、引用来源面板与滚动定位等核心交互。
  * @author gouxinjie
  * @created 2026-03-16
- * @updated 2026-04-08
+ * @updated 2026-07-30
  */
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDown, Share2, Zap } from 'lucide-react';
+import { ArrowDown, Code, FileText, Lightbulb, Share2, Sparkles, Zap } from 'lucide-react';
 import classNames from 'classnames';
+import { motion } from 'framer-motion';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 
@@ -23,6 +24,55 @@ import { cacheMessages, getCachedMessages, upsertMessage, deleteCachedMessage } 
 
 /** 流式消息落盘节流间隔（毫秒），避免每个 chunk 都写 IndexedDB 造成主线程抖动 */
 const CACHE_PERSIST_INTERVAL = 200;
+
+/** 首页背景装饰浮动光晕配置：位置、大小、运动轨迹与透明度 */
+interface FloatingGlow {
+  /** 定位（top 或 bottom，二选一） */
+  top?: string;
+  bottom?: string;
+  /** 定位（left 或 right，二选一） */
+  left?: string;
+  right?: string;
+  /** 宽高（正方形） */
+  size: number;
+  /** 模糊半径 */
+  blur: number;
+  /** 透明度 */
+  opacity: number;
+  /** 运动周期（秒） */
+  duration: number;
+  /** X 轴关键帧路径 */
+  x: number[];
+  /** Y 轴关键帧路径 */
+  y: number[];
+}
+
+const FLOATING_GLOWS: FloatingGlow[] = [
+  // 左上角较大光晕，浮动幅度小
+  { top: '12%', left: '18%', size: 280, blur: 60, opacity: 0.15, duration: 8, x: [0, 20, -10, 25, 0], y: [0, -15, 20, -10, 0] },
+  // 右下角中等光晕，浮动方向相反
+  { bottom: '18%', right: '15%', size: 220, blur: 50, opacity: 0.12, duration: 10, x: [0, -18, 12, -22, 0], y: [0, 20, -15, 10, 0] },
+  // 中间偏右小点缀，快节奏微动
+  { top: '45%', left: '65%', size: 130, blur: 50, opacity: 0.10, duration: 6, x: [0, 6, -10, 8, 0], y: [0, -12, 8, -6, 0] },
+];
+
+/** 首页快捷提问选项：文案与对应图标 */
+interface QuickActionItem {
+  /** 展示文案 */
+  label: string;
+  /** 填充到输入框的实际问题 */
+  value: string;
+  /** 左侧图标 */
+  icon: React.ReactNode;
+}
+
+const QUICK_ACTIONS: QuickActionItem[] = [
+  { label: '帮我写一段代码', value: '帮我写一段代码：', icon: <Code size={16} strokeWidth={1.5} /> },
+  { label: '解释一个概念', value: '请解释这个概念：', icon: <Lightbulb size={16} strokeWidth={1.5} /> },
+  { label: '总结一篇文章', value: '请帮我总结这篇文章的要点：', icon: <FileText size={16} strokeWidth={1.5} /> },
+  { label: '生成一个创意', value: '请帮我生成一个创意：', icon: <Sparkles size={16} strokeWidth={1.5} /> },
+];
+
 import { useSessionStore } from '../../store/sessionStore';
 import type { Message } from '../../types/chat';
 import type { ChatStreamChunk, MessageRecord, MessageStatus } from '../../types/api';
@@ -66,6 +116,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
   const [requestError, setRequestError] = useState('');
   const [citationPanelState, setCitationPanelState] = useState<CitationPanelState | null>(null);
   const [isCitationPanelVisible, setIsCitationPanelVisible] = useState(false);
+  const [quickFill, setQuickFill] = useState<{ value: string; trigger: number } | undefined>(undefined);
 
   const { sessionId } = useParams<{ sessionId: string }>();
 
@@ -85,6 +136,14 @@ const ChatMain: React.FC<ChatMainProps> = ({
   const navigate = useNavigate();
   const highlightMessageId = (location.state as { highlightMessageId?: number | string } | null)?.highlightMessageId;
   const updateSessionTitle = useSessionStore((state) => state.updateSessionTitle);
+
+  /**
+   * 处理首页快捷提问 Chip 点击：将对应问题填充到输入框并聚焦。
+   * @param value - 填充文案
+   */
+  const handleQuickAction = useCallback((value: string) => {
+    setQuickFill((prev) => ({ value, trigger: (prev?.trigger ?? 0) + 1 }));
+  }, []);
 
   const chatAreaRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -1019,6 +1078,47 @@ const ChatMain: React.FC<ChatMainProps> = ({
           <div className={styles.loadingWrapper} />
         ) : messages.length === 0 ? (
           <div className={styles.welcomeContent}>
+            {/* 背景装饰：层次化光晕 — 环境渐变层 + 柔光浮动元素 */}
+            {/* 环境渐变层：从左上角品牌色发散，铺满整块背景 */}
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                pointerEvents: 'none',
+                zIndex: 0,
+                background:
+                  'radial-gradient(ellipse at 20% 30%, rgba(var(--color-primary-rgb), 0.07) 0%, transparent 60%), ' +
+                  'radial-gradient(ellipse at 80% 70%, rgba(var(--color-primary-rgb), 0.04) 0%, transparent 50%)',
+              }}
+            />
+            {/* 浮动光晕：通过数组数据驱动渲染，避免重复 JSX */}
+            {FLOATING_GLOWS.map((glow, index) => (
+              <div
+                key={index}
+                style={{
+                  position: 'absolute',
+                  pointerEvents: 'none',
+                  zIndex: 0,
+                  ...(glow.top !== undefined ? { top: glow.top } : {}),
+                  ...(glow.left !== undefined ? { left: glow.left } : {}),
+                  ...(glow.bottom !== undefined ? { bottom: glow.bottom } : {}),
+                  ...(glow.right !== undefined ? { right: glow.right } : {}),
+                }}
+              >
+                <motion.div
+                  aria-hidden="true"
+                  animate={{ x: glow.x, y: glow.y }}
+                  transition={{ duration: glow.duration, repeat: Infinity, ease: 'easeInOut' }}
+                  style={{
+                    width: glow.size,
+                    height: glow.size,
+                    borderRadius: '50%',
+                    filter: `blur(${glow.blur}px)`,
+                    background: `radial-gradient(circle, rgba(var(--color-primary-rgb), ${glow.opacity}) 0%, transparent 70%)`,
+                  }}
+                />
+              </div>
+            ))}
             <ChatWelcome />
             <div className={styles.welcomeInput}>
               <ChatInput
@@ -1029,8 +1129,31 @@ const ChatMain: React.FC<ChatMainProps> = ({
                 onToggleDeepThink={setIsDeepThink}
                 onToggleSearch={setIsSearch}
                 autoFocus={shouldFocus}
+                autoFill={quickFill}
               />
             </div>
+            <motion.div
+              className={styles.quickActions}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {QUICK_ACTIONS.map((action, index) => (
+                <motion.button
+                  key={action.label}
+                  type="button"
+                  className={styles.quickActionChip}
+                  onClick={() => handleQuickAction(action.value)}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.35 + index * 0.06, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <span className={styles.quickActionIcon}>{action.icon}</span>
+                  <span>{action.label}</span>
+                </motion.button>
+              ))}
+            </motion.div>
+            <p className={styles.disclaimer}>内容由 AI 生成，请仔细甄别</p>
           </div>
         ) : (
           <div className={styles.messagesList}>

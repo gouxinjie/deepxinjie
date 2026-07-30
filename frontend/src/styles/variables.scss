@@ -83,9 +83,10 @@ $dark-text-3: #676767; // text-tertiary / shortcut-text
   --color-input-bg:         #{$white};
   
   // 2.3 功能组件颜色 (Components)
-  --color-new-chat-bg:      #{$white};
-  --color-new-chat-hover:   #{$gray-100};
-  --color-new-chat-border:  #{$gray-400};
+  --color-new-chat-bg:      transparent;
+  --color-new-chat-hover:   rgba(var(--color-primary-rgb), 0.08);
+  --color-new-chat-border:  rgba(var(--color-primary-rgb), 0.3);
+  --color-new-chat-text:    var(--color-primary);
   --color-shortcut-text:    #{$gray-500};
 
   // 2.4 文本颜色 (Typography)
@@ -162,10 +163,12 @@ $dark-text-3: #676767; // text-tertiary / shortcut-text
   --color-bg-hover:         #{$dark-700};
   --color-bg-dark:          #{$dark-850};
   --color-input-bg:         #{$dark-850};
-  
-  --color-new-chat-bg:      #{$dark-700};
-  --color-new-chat-hover:   #{$dark-600};
-  --color-new-chat-border:  transparent;
+
+  // 深色模式下新建对话按钮使用主题色边框透明底，与浅色模式一致
+  --color-new-chat-bg:      transparent;
+  --color-new-chat-hover:   rgba(var(--color-primary-rgb), 0.15);
+  --color-new-chat-border:  rgba(var(--color-primary-rgb), 0.4);
+  --color-new-chat-text:    var(--color-primary);
   --color-shortcut-text:    #{$dark-text-3};
 
   --color-text-main:        #{$dark-text-1};
@@ -222,6 +225,7 @@ $color-input-bg:         var(--color-input-bg);
 $color-new-chat-bg:      var(--color-new-chat-bg);
 $color-new-chat-hover:   var(--color-new-chat-hover);
 $color-new-chat-border:  var(--color-new-chat-border);
+$color-new-chat-text:    var(--color-new-chat-text);
 $color-shortcut-text:    var(--color-shortcut-text);
 
 $color-text-main:        var(--color-text-main);

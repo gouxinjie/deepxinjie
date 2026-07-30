@@ -20,9 +20,8 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        // 后端因 8000 端口被系统孤儿 socket 占用（进程已不存在但内核未回收），
-        // 本次临时改用 8001 启动后端；重启电脑后 8000 恢复可改回。
-        target: 'http://127.0.0.1:8001',
+        // 代理目标指向后端服务地址；当前后端运行在 8000 端口
+        target: 'http://127.0.0.1:8000',
         changeOrigin: true,
       },
     },

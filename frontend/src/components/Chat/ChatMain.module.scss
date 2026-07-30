@@ -55,6 +55,15 @@
   @include flex(column, center, center);
   padding: 20px;
   margin-top: -80px;
+  position: relative;
+  overflow: hidden;
+
+  // 背景装饰浮层通过 framer-motion div 实现（见 JSX）
+  // 内部子元素在装饰层之上
+  > * {
+    position: relative;
+    z-index: 1;
+  }
 }
 
 .loadingWrapper {
@@ -66,7 +75,55 @@
 .welcomeInput {
   width: 100%;
   max-width: 760px;
-  margin-top: 32px;
+  margin-top: 40px;
+}
+
+// 首页快捷提问选项区：水平排列，溢出时允许折行
+.quickActions {
+  width: 100%;
+  max-width: 760px;
+  @include flex(row, center, center);
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.quickActionChip {
+  @include flex(row, flex-start, center);
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: $radius-full;
+  border: 1px solid $color-border-light;
+  background-color: $color-bg;
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: rgba(var(--color-primary-rgb), 0.4);
+    color: $color-text-main;
+    background-color: $color-bg-soft;
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.quickActionIcon {
+  @include flex-center;
+  color: $color-primary;
+}
+
+// 欢迎页底部免责声明
+.welcomeContent .disclaimer {
+  margin-top: 28px;
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  text-align: center;
 }
 
 .messagesList {
@@ -277,6 +334,22 @@
   .welcomeInput {
     max-width: 100%;
     margin-top: 24px;
+  }
+
+  .quickActions {
+    max-width: 100%;
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .quickActionChip {
+    padding: 8px 12px;
+    font-size: $font-size-xs;
+  }
+
+  .welcomeContent .disclaimer {
+    margin-top: 16px;
+    font-size: $font-size-xs;
   }
 
   .anchorContainer {

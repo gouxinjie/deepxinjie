@@ -3,7 +3,7 @@
  * @description 聊天输入组件，负责处理用户输入、开关切换与消息发送
  * @author gouxinjie
  * @created 2026-03-16
- * @updated 2026-04-10
+ * @updated 2026-07-30
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowUp, Brain, Globe, Paperclip } from 'lucide-react';
@@ -34,6 +34,8 @@ interface ChatInputProps {
   autoFocus?: boolean;
   /** 会话 ID，用于绑定本地草稿（新会话为 undefined） */
   sessionId?: string;
+  /** 外部触发的快捷填充内容（trigger 变化时写入输入框并聚焦） */
+  autoFill?: { value: string; trigger: number };
 }
 
 type ToastState = {
@@ -53,6 +55,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
   onToggleSearch,
   autoFocus = false,
   sessionId,
+  autoFill,
 }) => {
   const [message, setMessage] = useState('');
   const [isDeepThink, setIsDeepThink] = useState(initialDeepThink);
@@ -106,6 +109,14 @@ const ChatInput: React.FC<ChatInputProps> = ({
     textareaRef.current.style.height = 'auto';
     textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
   };
+
+  // 快捷提问填充：当外部传入新的填充对象时将对应文案写入输入框并聚焦
+  useEffect(() => {
+    if (autoFill) {
+      setMessage(autoFill.value);
+      textareaRef.current?.focus();
+    }
+  }, [autoFill]);
 
   useEffect(() => {
     if (autoFocus && textareaRef.current) {

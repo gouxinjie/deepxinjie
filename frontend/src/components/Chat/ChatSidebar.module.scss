@@ -86,31 +86,32 @@
   cursor: pointer;
 }
 
-// “开启新对话”按钮：药丸形状设计
+// “开启新对话”按钮：主题色边框透明底药丸按钮
 .newChatBtn {
   @include flex-center;
   gap: 8px;
   user-select: none;
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border: 1px solid $color-new-chat-border;
   border-radius: $radius-full;
   outline: none;
   flex-shrink: 0;
   width: calc(100% - 24px); // 减去左右间距
   margin: 0 12px; // 按钮左右间距
-  height: 44px;
+  height: 40px;
   padding: 0 16px;
   font-size: $font-size-base;
   font-weight: $font-weight-medium;
   background-color: $color-new-chat-bg;
-  color: $color-text-main;
+  color: $color-new-chat-text;
   transition: all 0.2s ease;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
 
   &:hover {
     background-color: $color-new-chat-hover;
-    border-color: rgba(15, 23, 42, 0.1);
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+  }
+
+  &:active {
+    transform: scale(0.97);
   }
 
   svg {
