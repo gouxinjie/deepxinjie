@@ -16,6 +16,8 @@ def get_required_env(name: str) -> str:
     return value
 
 
+conn = None
+cursor = None
 try:
     conn = mysql.connector.connect(
         host=os.getenv("DB_HOST", "localhost"),
@@ -39,7 +41,7 @@ try:
 except mysql.connector.Error as err:
     print(f"数据库初始化失败：{err}")
 finally:
-    if "cursor" in locals():
+    if cursor is not None:
         cursor.close()
-    if "conn" in locals():
+    if conn is not None:
         conn.close()

@@ -7,7 +7,9 @@ import json
 import logging
 import os
 import uuid
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, Optional, cast
+
+from openai.types.chat import ChatCompletionMessageParam
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -15,9 +17,9 @@ from fastapi.responses import StreamingResponse
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 
-from auth_utils import get_current_user_id
-from db import connection_pool, get_db
-from services.search_service import SearchCitation, prepare_search_context
+from ..auth_utils import get_current_user_id
+from ..db import connection_pool, get_db
+from ..services.search_service import SearchCitation, prepare_search_context
 
 load_dotenv()
 
@@ -238,7 +240,13 @@ def parse_citations(raw_citations: list[dict[str, Any]]) -> list[SearchCitation]
         snippet = item.get("snippet")
         if not isinstance(citation_id, int):
             continue
-        if not all(isinstance(value, str) for value in [title, url, domain, snippet]):
+        # 逐个 isinstance 校验，确保 pyright 能将 title/url/domain/snippet 收窄为 str
+        if not (
+            isinstance(title, str)
+            and isinstance(url, str)
+            and isinstance(domain, str)
+            and isinstance(snippet, str)
+        ):
             continue
         citations.append(
             SearchCitation(
@@ -710,7 +718,7 @@ async def generate_response(
             continue_context = prepare_continue_generation(payload, user_id, db)
             assistant_message_id = int(continue_context["assistant_message_id"])
             generation_id = str(continue_context["generation_id"])
-            messages = list(continue_context["messages"])
+            messages: list[dict[str, str]] = list(continue_context["messages"])
             full_content = str(continue_context["existing_content"])
             full_reasoning = str(continue_context["existing_reasoning"])
             citations = list(continue_context["citations"])
@@ -814,12 +822,24 @@ async def generate_response(
                     f"data: {json.dumps({'search_status': search_status}, ensure_ascii=False)}\n\n"
                 )
 
+        # 流式节流：避免每个分片都查询数据库，降低流式过程中的 DB 往返开销。
+        # 每 16 个分片才检查一次“生成是否仍在进行”，未到检查点时视为继续（前端中断会触发 CancelledError 立即终止）。
+        # 定义于 try 之前，保证 create 抛异常进入 except 兜底分支时 should_abort 已绑定。
+        chunk_index = 0
+
+        async def should_abort() -> bool:
+            nonlocal chunk_index
+            chunk_index += 1
+            if chunk_index % 16 != 0:
+                return False
+            return not is_message_generation_active(db, assistant_message_id, generation_id)
+
         try:
             if client is None:
                 raise RuntimeError("未配置 DEEPSEEK_API_KEY")
 
             # 组装额外参数：开启深度思考时通过 extra_body 传入 thinking（V4 不再使用独立 reasoner 模型）
-            extra_body: dict = {}
+            extra_body: dict[str, object] = {}
             if allow_reasoning:
                 extra_body["thinking"] = {"type": "enabled"}
                 reasoning_effort = "high"
@@ -828,21 +848,11 @@ async def generate_response(
 
             response = await client.chat.completions.create(
                 model=model,
-                messages=messages,
+                messages=cast("list[ChatCompletionMessageParam]", messages),
                 stream=True,
                 reasoning_effort=reasoning_effort,
                 extra_body=extra_body,
             )
-            # 流式节流：避免每个分片都查询数据库，降低流式过程中的 DB 往返开销。
-            # 每 16 个分片才检查一次“生成是否仍在进行”，未到检查点时视为继续（前端中断会触发 CancelledError 立即终止）。
-            chunk_index = 0
-
-            async def should_abort() -> bool:
-                nonlocal chunk_index
-                chunk_index += 1
-                if chunk_index % 16 != 0:
-                    return False
-                return not is_message_generation_active(db, assistant_message_id, generation_id)
 
             async for chunk in response:
                 if not chunk.choices:

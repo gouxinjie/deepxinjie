@@ -3,15 +3,15 @@ import os
 import re
 import secrets
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 import jwt
 from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response, status
 from passlib.context import CryptContext
 from pydantic import BaseModel
 
-from auth_utils import JWT_ALGORITHM, JWT_SECRET, get_current_user_id
-from db import connection_pool, get_db
+from ..auth_utils import JWT_ALGORITHM, JWT_SECRET, get_current_user_id
+from ..db import connection_pool, get_db
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -83,13 +83,15 @@ def build_error_response(code: int | str, message: str, data: Any = None) -> dic
     }
 
 
-def normalize_cookie_samesite() -> str:
+def normalize_cookie_samesite() -> Literal["lax", "strict", "none"]:
     """
     规范化 Cookie SameSite 配置。
     @returns 合法的 SameSite 值
     """
-    if COOKIE_SAMESITE in {"lax", "strict", "none"}:
-        return COOKIE_SAMESITE
+    if COOKIE_SAMESITE == "strict":
+        return "strict"
+    if COOKIE_SAMESITE == "none":
+        return "none"
     return "lax"
 
 

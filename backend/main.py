@@ -9,8 +9,8 @@ from fastapi.responses import JSONResponse
 
 load_dotenv()
 
-from routers.auth import initialize_auth_schema, router as auth_router
-from routers.chat import initialize_chat_schema, router as chat_router
+from backend.routers.auth import initialize_auth_schema, router as auth_router
+from backend.routers.chat import initialize_chat_schema, router as chat_router
 
 app = FastAPI()
 
