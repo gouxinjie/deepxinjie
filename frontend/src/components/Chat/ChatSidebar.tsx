@@ -57,21 +57,6 @@ interface ToastState {
 }
 
 /**
- * 基于昵称生成稳定哈希，用于映射默认头像颜色。
- * @param text - 输入文本
- * @returns 稳定非负整数
- */
-const getStableHash = (text: string): number => {
-  let hash = 0;
-
-  for (const char of text) {
-    hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-  }
-
-  return hash;
-};
-
-/**
  * 获取默认头像显示字符。
  * @param nickname - 用户昵称
  * @returns 默认头像字符
