@@ -107,7 +107,6 @@ const ChatMain: React.FC<ChatMainProps> = ({
   isCollapsed = false,
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [shouldFocus, setShouldFocus] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [activeAnchorId, setActiveAnchorId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -871,22 +870,6 @@ const ChatMain: React.FC<ChatMainProps> = ({
   };
 
   /**
-   * 当未选中会话（进入空白态）时，请求下一帧聚焦输入框以引导用户发起对话。
-   */
-  useEffect(() => {
-    if (sessionId) {
-      return undefined;
-    }
-
-    const rafId = requestAnimationFrame(() => {
-      setShouldFocus(true);
-      window.setTimeout(() => setShouldFocus(false), 100);
-    });
-
-    return () => cancelAnimationFrame(rafId);
-  }, [sessionId]);
-
-  /**
    * 会话切换后的延迟处理：区分“新建会话”与“打开已有会话”，重置相关标记与滚动状态。
    */
   useEffect(() => {
@@ -1127,40 +1110,41 @@ const ChatMain: React.FC<ChatMainProps> = ({
                 />
               </div>
             ))}
-            <ChatWelcome />
-            <div className={styles.welcomeInput}>
-              <ChatInput
-                onSend={handleSend}
-                sessionId={sessionId}
-                initialDeepThink={isDeepThink}
-                initialSearch={isSearch}
-                onToggleDeepThink={setIsDeepThink}
-                onToggleSearch={setIsSearch}
-                autoFocus={shouldFocus}
-                autoFill={quickFill}
-              />
+            <div className={styles.welcomeBody}>
+              <ChatWelcome />
+              <div className={styles.welcomeInput}>
+                <ChatInput
+                  onSend={handleSend}
+                  sessionId={sessionId}
+                  initialDeepThink={isDeepThink}
+                  initialSearch={isSearch}
+                  onToggleDeepThink={setIsDeepThink}
+                  onToggleSearch={setIsSearch}
+                  autoFill={quickFill}
+                />
+              </div>
+              <motion.div
+                className={styles.quickActions}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              >
+                {QUICK_ACTIONS.map((action, index) => (
+                  <motion.button
+                    key={action.label}
+                    type="button"
+                    className={styles.quickActionChip}
+                    onClick={() => handleQuickAction(action.value)}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: 0.35 + index * 0.06, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <span className={styles.quickActionIcon}>{action.icon}</span>
+                    <span>{action.label}</span>
+                  </motion.button>
+                ))}
+              </motion.div>
             </div>
-            <motion.div
-              className={styles.quickActions}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            >
-              {QUICK_ACTIONS.map((action, index) => (
-                <motion.button
-                  key={action.label}
-                  type="button"
-                  className={styles.quickActionChip}
-                  onClick={() => handleQuickAction(action.value)}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: 0.35 + index * 0.06, ease: [0.22, 1, 0.36, 1] }}
-                >
-                  <span className={styles.quickActionIcon}>{action.icon}</span>
-                  <span>{action.label}</span>
-                </motion.button>
-              ))}
-            </motion.div>
             <p className={styles.disclaimer}>内容由 AI 生成，请仔细甄别</p>
           </div>
         ) : (

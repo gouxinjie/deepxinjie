@@ -189,6 +189,48 @@
   color: var(--color-text-secondary);
 }
 
+// 演示账号提示：登录页展示体验账号信息，浅色底 + 主色描边，突出但不喧宾夺主
+.demoHint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 10px 12px;
+  border: 1px dashed $color-primary;
+  border-radius: $radius-md;
+  background: $color-primary-light;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+// 提示标签：主色胶囊，强调“演示账号”身份
+.demoHintLabel {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: $radius-full;
+  background: $color-primary;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+// 提示正文：账号与密码数字加粗，便于阅读和记忆
+.demoHintText {
+  min-width: 0;
+
+  strong {
+    color: var(--color-text-main);
+    font-weight: 600;
+  }
+}
+
+// 注册模式下用于占位，保持 Tab 与卡片头部间距一致
+.demoHintPlaceholder {
+  min-height: 16px;
+  margin-top: 16px;
+}
+
 // 登录 / 注册 切换
 .tabs {
   display: flex;

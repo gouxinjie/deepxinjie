@@ -3,9 +3,10 @@
  * @description 通用确认弹窗组件，负责展示标题、内容与确认取消操作
  * @author gouxinjie
  * @created 2026-03-16
- * @updated 2026-04-08
+ * @updated 2026-07-31
  */
 import React from 'react';
+import { createPortal } from 'react-dom';
 import styles from './index.module.scss';
 import classNames from 'classnames';
 
@@ -40,7 +41,8 @@ const Modal: React.FC<ModalProps> = ({
 }) => {
   if (!visible) return null;
 
-  return (
+  // 通过 Portal 挂载到 body，避免被侧边栏的 transform 祖先限制定位（移动端弹窗错位的根因）
+  return createPortal(
     <div className={styles.overlay} onClick={onCancel}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
@@ -61,7 +63,8 @@ const Modal: React.FC<ModalProps> = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
 

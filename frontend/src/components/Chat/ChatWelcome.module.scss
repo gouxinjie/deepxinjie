@@ -32,26 +32,26 @@
 @media (max-width: 750px) {
   .logoTitle {
     flex-direction: column;
-    gap: 14px;
-    margin-bottom: 12px;
+    gap: 16px;
+    margin-bottom: 14px;
   }
 
   .title {
-    font-size: $font-size-3xl;
+    font-size: $font-size-4xl; // 移动端放大主标题，避免整体显得过小
     text-align: center;
     padding: 0 20px;
     line-height: 1.3;
   }
 
   .subtitle {
-    font-size: $font-size-base;
+    font-size: $font-size-md; // 移动端副标题适度放大
     padding: 0 20px;
     text-align: center;
   }
 
-  /* 移动端图标同步缩小，与更小的标题保持视觉平衡 */
+  /* 移动端图标同步放大，与更大的标题保持视觉平衡 */
   .logoTitle svg {
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
   }
 }

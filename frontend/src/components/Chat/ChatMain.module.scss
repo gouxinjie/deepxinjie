@@ -72,6 +72,12 @@
   color: $color-text-tertiary;
 }
 
+// 欢迎页主内容区：包裹 logo、标题、输入框与快捷操作，桌面端随父级整体居中
+.welcomeBody {
+  @include flex(column, center, center);
+  width: 100%;
+}
+
 .welcomeInput {
   width: 100%;
   max-width: 760px;
@@ -314,8 +320,18 @@
   }
 
   .welcomeContent {
-    margin-top: -40px;
-    padding: 0 16px;
+    margin-top: 0; // 移除上移，让主内容占满整屏
+    padding: 28px 16px 12px;
+    align-items: stretch; // 移动端输入框占满宽度
+    justify-content: flex-start; // 顶部起始，由 welcomeBody 居中主内容、免责声明落到底部
+    overflow-y: auto; // 矮屏可滚动，避免内容被裁剪
+    overflow-x: hidden; // 禁止横向滚动，避免背景光晕产生横向溢出
+  }
+
+  // 主内容区占据中间全部空间并垂直居中，避免在超大留白中显得过小
+  .welcomeBody {
+    flex: 1;
+    justify-content: center;
   }
 
   .scrollDownButton {
@@ -348,7 +364,9 @@
   }
 
   .welcomeContent .disclaimer {
-    margin-top: 16px;
+    margin-top: 0; // 取消上边距，已通过 welcomeBody 撑开空间
+    flex-shrink: 0; // 不被压缩，稳定固定在底部
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 4px); // 适配刘海屏底部安全区
     font-size: $font-size-xs;
   }
 

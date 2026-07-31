@@ -178,6 +178,18 @@ const LoginPage: React.FC = () => {
             </p>
           </header>
 
+          {/* 演示账号提示：登录模式下展示体验账号信息，来访即可免注册直接登录体验 */}
+          {mode === 'login' ? (
+            <div className={styles.demoHint} role="note">
+              <span className={styles.demoHintLabel}>演示账号</span>
+              <span className={styles.demoHintText}>
+                账号 <strong>13113183859</strong> · 密码 <strong>123456</strong>，可直接登录体验
+              </span>
+            </div>
+          ) : (
+            <div className={styles.demoHintPlaceholder}></div>
+          )}
+
           <div className={styles.tabs}>
             <button
               type="button"
