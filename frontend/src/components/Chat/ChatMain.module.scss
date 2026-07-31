@@ -99,7 +99,7 @@
   font-size: $font-size-sm;
   font-weight: $font-weight-medium;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color, border-color, color, box-shadow, opacity, transform 0.2s ease;
 
   &:hover {
     border-color: rgba(var(--color-primary-rgb), 0.4);
@@ -198,7 +198,7 @@
   background-color: transparent;
   color: $color-text-tertiary;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color, border-color, color, box-shadow, opacity, transform 0.2s ease;
   flex-shrink: 0;
 
   &:hover {
@@ -225,7 +225,7 @@
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   color: $color-text-secondary;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color, border-color, color, box-shadow, opacity, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 24;
   animation: fadeIn 0.3s ease;
 

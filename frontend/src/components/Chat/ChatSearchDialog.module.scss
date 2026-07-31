@@ -104,7 +104,7 @@
   cursor: pointer;
   flex-shrink: 0;
   border: none;
-  transition: all 0.15s;
+  transition: background-color, border-color, color, box-shadow, opacity, transform 0.15s;
 
   &:hover {
     background-color: $color-border;
@@ -160,7 +160,7 @@
   padding: 12px 14px;
   border-radius: $radius-lg;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background-color, border-color, color, box-shadow, opacity, transform 0.15s;
   border: 1px solid transparent;
 
   &:hover,
@@ -230,7 +230,7 @@
   color: $color-text-secondary;
   cursor: pointer;
   border: 1px solid $color-border-light;
-  transition: all 0.15s;
+  transition: background-color, border-color, color, box-shadow, opacity, transform 0.15s;
   z-index: 1;
 
   &:hover {

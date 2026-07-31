@@ -584,7 +584,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
                     style={{ '--swatch-color': '#4d6bfe' } as React.CSSProperties}
                     onClick={() => {
                       setColorScheme('blue');
-                      showToast('已切换为蓝色主题', 'success');
+                      showToast('已切换为蓝色主题', 'info');
                     }}
                     title="蓝色调（经典）"
                     aria-label="切换到蓝色主色"
@@ -598,7 +598,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
                     style={{ '--swatch-color': '#16915f' } as React.CSSProperties}
                     onClick={() => {
                       setColorScheme('green');
-                      showToast('已切换为绿色主题', 'success');
+                      showToast('已切换为绿色主题', 'info');
                     }}
                     title="绿色调（默认）"
                     aria-label="切换到绿色主色"

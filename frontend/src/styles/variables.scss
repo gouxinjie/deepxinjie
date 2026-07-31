@@ -91,6 +91,7 @@ $dark-text-3: #676767; // text-tertiary / shortcut-text
 
   // 2.4 文本颜色 (Typography)
   --color-text-main:        #{$gray-900};
+  --color-text-rgb:          26, 26, 26; // 文本 RGB 分量，用于边框/阴影透明度运算（随主题切换）
   --color-text-secondary:   #{$gray-700};
   --color-text-tertiary:    #{$gray-600};
 
@@ -116,8 +117,8 @@ $dark-text-3: #676767; // text-tertiary / shortcut-text
   --shadow-lg:              0 12px 32px rgba(0, 0, 0, 0.15);
   --shadow-xl:              0 20px 48px rgba(0, 0, 0, 0.2);
   --shadow-primary:         0 4px 12px rgba(22, 145, 95, 0.25); // 默认绿色主色阴影
-  --shadow-input:           0 8px 24px rgba(15, 23, 42, 0.06);
-  --shadow-input-focus:     0 10px 28px rgba(15, 23, 42, 0.09);
+  --shadow-input:           0 8px 24px rgba(var(--color-text-rgb), 0.06);
+  --shadow-input-focus:     0 10px 28px rgba(var(--color-text-rgb), 0.09);
 
   // 2.8 其他 (Radius, Sizes)
   --radius-xs: 4px; --radius-sm: 6px; --radius-md: 8px; --radius-lg: 10px;
@@ -172,6 +173,7 @@ $dark-text-3: #676767; // text-tertiary / shortcut-text
   --color-shortcut-text:    #{$dark-text-3};
 
   --color-text-main:        #{$dark-text-1};
+  --color-text-rgb:          236, 236, 236; // 深色模式下文本为浅色，边框/阴影自动转为浅色以保证可见
   --color-text-secondary:   #{$dark-text-2};
   --color-text-tertiary:    #{$dark-text-3};
 
@@ -305,6 +307,9 @@ $font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Ox
 
 // 自定义滚动条
 @mixin scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: $color-border transparent;
+
   &::-webkit-scrollbar {
     width: 6px;
     height: 6px;

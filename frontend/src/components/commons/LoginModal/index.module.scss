@@ -65,7 +65,7 @@
   font-size: $font-size-md;
   font-weight: $font-weight-medium;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color, border-color, color, box-shadow, opacity, transform 0.2s ease;
 }
 
 .tabButtonActive {

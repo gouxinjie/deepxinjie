@@ -16,7 +16,7 @@
   border-left: 1px solid $color-border-sidebar; // 使用主题感知边框，兼容深色模式
   border-radius: 0;
   background: $color-bg;
-  box-shadow: -10px 0 30px rgba(15, 23, 42, 0.04);
+  box-shadow: -10px 0 30px rgba(var(--color-text-rgb), 0.04);
   transform: translateX(calc(100% + 24px));
   opacity: 0;
   pointer-events: none;
@@ -232,7 +232,7 @@
     width: 100%;
     height: min(84vh, 760px);
     border-left: none;
-    border-top: 1px solid rgba(15, 23, 42, 0.08);
+    border-top: 1px solid rgba(var(--color-text-rgb), 0.08);
     border-radius: $radius-xl $radius-xl 0 0;
     transform: translateY(calc(100% + 24px)) scale(0.98);
     transform-origin: center bottom;

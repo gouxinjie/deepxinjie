@@ -68,7 +68,7 @@
   font-size: $font-size-base;
   font-weight: $font-weight-medium;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color, border-color, color, box-shadow, opacity, transform 0.2s;
   border: none;
   outline: none;
 }

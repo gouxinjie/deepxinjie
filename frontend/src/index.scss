@@ -8,7 +8,8 @@ body {
   color: var(--color-text-main);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  height: 100vh;
+  // 使用动态视口高度，避免移动端浏览器地址栏伸缩导致的高度跳变
+  height: 100dvh;
   overflow: hidden;
   // 明暗主题切换时的平滑过渡
   transition: background-color 0.3s ease, color 0.3s ease;
@@ -21,6 +22,24 @@ body {
 
 * {
   box-sizing: border-box;
+  // 主题切换统一过渡：仅作用于与明暗主题相关的属性，优先级低于组件自有 transition，不会覆盖其交互过渡
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+// 全局滚动条（Firefox 适配）
+html {
+  scrollbar-width: thin;
+  scrollbar-color: $color-border transparent;
+}
+
+// 键盘聚焦可见性：为所有可聚焦元素提供清晰轮廓（鼠标点击不会触发，无障碍）
+:focus-visible {
+  outline: 2px solid $color-primary;
+  outline-offset: 2px;
 }
 
 button {
@@ -28,7 +47,7 @@ button {
   border: none;
   background: none;
   font-family: inherit;
-  transition: all 0.2s ease;
+  transition: background-color, border-color, color, box-shadow, opacity, transform 0.2s ease;
   touch-action: manipulation;
   
   &:disabled {
@@ -62,5 +81,17 @@ input, textarea {
   
   &:hover {
     background: $color-text-tertiary;
+  }
+}
+
+// 尊重用户的"减少动效"偏好，关闭动画与过渡（无障碍）
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

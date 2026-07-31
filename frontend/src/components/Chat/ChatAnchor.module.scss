@@ -29,7 +29,7 @@
   border-radius: $radius-full;
   background-color: $color-border; // default light gray
   border: none;
-  transition: all 0.2s ease;
+  transition: background-color, border-color, color, box-shadow, opacity, transform 0.2s ease;
   cursor: pointer;
   padding: 0;
 
