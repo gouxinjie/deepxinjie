@@ -75,20 +75,51 @@ const getNodeText = (node: React.ReactNode): string => {
 };
 
 /**
- * 代码块组件（定义为模块级，避免每次父组件重渲染时重建组件类型导致代码块子树卸载重挂）
- * 负责语法高亮代码块渲染、复制 / 下载，以及 mermaid 图表渲染
+ * 代码块内容组件（定义为模块级，避免每次父组件重渲染时重建组件类型导致子树卸载重挂）
+ * 仅负责渲染 <code> 元素本身；容器、语言栏与复制 / 下载按钮统一由 CodeBlockContainer（pre 组件）处理。
+ * 语言标识为 mermaid 时，直接使用 Mermaid 组件渲染图表。
  */
 const CodeBlock: React.FC<CodeBlockProps> = ({ children, className, isStreaming = false, ...props }) => {
-  const [isCodeCopied, setIsCodeCopied] = useState(false);
   const match = /language-(\w+)/.exec(className || '');
   const language = match ? match[1] : '';
-  // 高亮后 children 为 React 元素数组，需递归提取纯文本再复制 / 下载
-  const code = getNodeText(children).replace(/\n$/, '');
-
-  // 语言标识为 mermaid 时，使用 Mermaid 组件渲染图表
+  // mermaid 图表走专用组件渲染
   if (language === 'mermaid') {
-    return <Mermaid chart={code} isStreaming={isStreaming} />;
+    return <Mermaid chart={getNodeText(children)} isStreaming={isStreaming} />;
   }
+  return (
+    <code className={className} {...props}>
+      {children}
+    </code>
+  );
+};
+
+/**
+ * 代码块容器组件（对应 Markdown 的 pre 元素，定义为模块级稳定组件）
+ * 围栏代码块才会出现 pre，因此在此统一渲染语言栏 + 复制 / 下载按钮 + 内层 pre/code：
+ * 1）让“未指定语言的围栏代码块”也能拥有代码块容器；
+ * 2）避免原先 pre 组件直接包裹 div 造成的 <pre> 内嵌套 <div> 非法 HTML 结构。
+ * 行内代码没有 pre 包裹，因此自然不会进入本组件，仍只渲染普通 <code>。
+ */
+const CodeBlockContainer: React.FC<React.PropsWithChildren<{ node?: { children?: unknown[] } }>> = ({
+  node,
+  children,
+}) => {
+  // 从 pre 的首个子节点（code）读取 className，判断语言与是否 mermaid
+  const codeNode = node?.children?.[0] as { properties?: { className?: unknown } } | undefined;
+  const cls = codeNode?.properties?.className;
+  const classList = Array.isArray(cls) ? (cls.filter((item) => typeof item === 'string') as string[]) : [];
+  const isMermaid = classList.some((item) => item.includes('language-mermaid'));
+  const languageClass = classList.find((item) => /language-(\w+)/.exec(item));
+  const language = languageClass ? /language-(\w+)/.exec(languageClass)?.[1] ?? '' : '';
+
+  // mermaid 图表由 CodeBlock 内部渲染 Mermaid，这里不包裹容器与 pre
+  if (isMermaid) {
+    return <>{children}</>;
+  }
+
+  const [isCodeCopied, setIsCodeCopied] = useState(false);
+  // 高亮后 children 为 React 元素，需递归提取纯文本再复制 / 下载
+  const code = getNodeText(children).replace(/\n$/, '');
 
   const handleCopyCode = async () => {
     await navigator.clipboard.writeText(code);
@@ -106,14 +137,6 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ children, className, isStreaming 
     URL.revokeObjectURL(url);
   };
 
-  if (!className) {
-    return (
-      <code className={className} {...props}>
-        {children}
-      </code>
-    );
-  }
-
   return (
     <div className={styles.codeBlockContainer}>
       <div className={styles.codeBlockHeader}>
@@ -129,11 +152,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ children, className, isStreaming 
           </button>
         </div>
       </div>
-      <pre className={className}>
-        <code className={className} {...props}>
-          {children}
-        </code>
-      </pre>
+      <pre>{children}</pre>
     </div>
   );
 };
@@ -235,17 +254,8 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
           </a>
         );
       },
-      pre: ({ node, children }) => {
-        // 内部为 mermaid 图表时去掉 pre 包裹，避免代码块样式与非法嵌套
-        const codeNode = node?.children?.[0] as { properties?: { className?: unknown } } | undefined;
-        const cls = codeNode?.properties?.className;
-        const isMermaid =
-          Array.isArray(cls) && cls.some((c) => typeof c === 'string' && c.includes('language-mermaid'));
-        if (isMermaid) {
-          return <>{children}</>;
-        }
-        return <pre>{children}</pre>;
-      },
+      // 围栏代码块统一交给模块级 CodeBlockContainer 渲染（含语言栏 / 复制 / 下载与内层 pre/code）
+      pre: ({ node, children }) => <CodeBlockContainer node={node} children={children} />,
       code: (props) => <CodeBlock {...props} isStreaming={isStreaming} />,
     }),
     [isStreaming, handleCitationJump],
