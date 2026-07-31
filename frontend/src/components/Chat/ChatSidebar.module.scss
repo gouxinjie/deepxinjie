@@ -30,6 +30,12 @@
   @include flex(row, flex-start, center);
   gap: 6px;
   cursor: pointer;
+
+  // 图标以块级基线对齐，避免 inline 基线导致的垂直偏移
+  svg {
+    display: block;
+    flex-shrink: 0;
+  }
 }
 
 .logoText {
@@ -37,6 +43,8 @@
   font-weight: $font-weight-bold;
   color: $color-primary;
   letter-spacing: -0.5px;
+  // 行高收紧为 1，使文字行盒与图标等高，确保图标与文字垂直居中对齐
+  line-height: 1;
 }
 
 .headerActions {

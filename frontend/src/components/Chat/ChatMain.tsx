@@ -20,11 +20,8 @@ import ChatMessage from './ChatMessage';
 import ChatWelcome from './ChatWelcome';
 import Toast from '../../components/commons/Toast';
 import { extractApiErrorMessage, messageApi, sendChatStream, sessionApi } from '../../services/api';
-import { cacheMessages, getCachedMessages, upsertMessage, deleteCachedMessage } from '../../services/localCache';
+import { cacheMessages, getCachedMessages, upsertMessage, touchCachedSession } from '../../services/localCache';
 import generateUUID from '../../utils/uuid';
-
-/** 流式消息落盘节流间隔（毫秒），避免每个 chunk 都写 IndexedDB 造成主线程抖动 */
-const CACHE_PERSIST_INTERVAL = 200;
 
 /** 首页背景装饰浮动光晕配置：位置、大小、运动轨迹与透明度 */
 interface FloatingGlow {
@@ -168,7 +165,6 @@ const ChatMain: React.FC<ChatMainProps> = ({
   const isStartingNewChat = useRef(false);
   const streamControllerRef = useRef<AbortController | null>(null);
   const streamingMessageIdRef = useRef<string | null>(null);
-  const lastCachePersistRef = useRef(0);
   const autoScrollEnabledRef = useRef(true);
   const isStreamingRef = useRef(false);
   const isProgrammaticScrollRef = useRef(false);
@@ -452,7 +448,6 @@ const ChatMain: React.FC<ChatMainProps> = ({
   const applyStreamChunk = (aiMessageId: string, chunk: ChatStreamChunk) => {
     setMessages((prev) => {
       const nextMessages = [...prev];
-      const prevStreamId = streamingMessageIdRef.current;
       const nextMessageId =
         typeof chunk.message_id === 'number'
           ? chunk.message_id.toString()
@@ -507,20 +502,9 @@ const ChatMain: React.FC<ChatMainProps> = ({
 
       nextMessages[targetIndex] = nextMessage;
 
-      // 增量持久化到本地，断网或刷新后可恢复。
-      // 仅当消息已获得真实 id（非本地临时 UUID）才落盘，避免临时 id 残留导致重复显示；
-      // 高频 chunk 做节流（≥CACHE_PERSIST_INTERVAL）以降低主线程占用，最终内容由 finishStreamingMessage 兜底落盘。
-      const ctx = cacheContextRef.current;
-      if (ctx && nextMessage.id !== aiMessageId) {
-        if (prevStreamId && prevStreamId !== nextMessage.id) {
-          void deleteCachedMessage(prevStreamId);
-        }
-        const now = Date.now();
-        if (now - lastCachePersistRef.current >= CACHE_PERSIST_INTERVAL) {
-          lastCachePersistRef.current = now;
-          void upsertMessage(ctx.userId, ctx.sessionId, nextMessage);
-        }
-      }
+      // 流式期间只在内存更新，不在每个分片写 IndexedDB；
+      // 用户问题已在 handleSend 中立即落盘，AI 消息的最终态由 finishStreamingMessage 在
+      // 结束/中断/出错时统一落盘，避免高频覆盖写，也能恢复完整内容。
 
       return nextMessages;
     });
@@ -739,9 +723,12 @@ const ChatMain: React.FC<ChatMainProps> = ({
       content,
     };
 
-    // 用户消息即时落盘，刷新后可恢复
+    // 用户消息即时落盘，刷新后可恢复；并同步会话活跃时间，使侧边栏即时按最近活跃重排
     if (userId > 0) {
       void upsertMessage(userId, currentSessionId, userMessage);
+      const nowIso = new Date().toISOString();
+      void touchCachedSession(currentSessionId, nowIso);
+      useSessionStore.getState().updateSessionTime(currentSessionId, nowIso);
     }
 
     return new Promise<boolean>((resolve) => {

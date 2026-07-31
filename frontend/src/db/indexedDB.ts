@@ -136,3 +136,31 @@ export async function deleteByKey(storeName: string, key: IDBValidKey): Promise<
     tx.onerror = () => reject(tx.error);
   });
 }
+
+/**
+ * 按索引批量删除匹配记录（用于删除会话时清理其全部消息）。
+ * @param storeName - 对象仓储名称
+ * @param indexName - 索引名称
+ * @param value - 索引查询值
+ */
+export async function deleteByIndex(
+  storeName: string,
+  indexName: string,
+  value: IDBValidKey,
+): Promise<void> {
+  const db = await getDB();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readwrite');
+    const index = tx.objectStore(storeName).index(indexName);
+    const request = index.openCursor(value);
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (cursor) {
+        cursor.delete();
+        cursor.continue();
+      }
+    };
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}

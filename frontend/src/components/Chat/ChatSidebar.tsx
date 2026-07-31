@@ -31,7 +31,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useSessionStore } from '../../store/sessionStore';
 import { useThemeStore } from '../../store/themeStore';
 import type { AuthUser, SessionItem } from '../../types/api';
-import { getCachedSessions, cacheSessions } from '../../services/localCache';
+import { getCachedSessions, cacheSessions, deleteCachedSession, deleteCachedMessagesBySession } from '../../services/localCache';
 import styles from './ChatSidebar.module.scss';
 import ChatSearchDialog from './ChatSearchDialog';
 import DeepXinjieLogo from '../DeepXinjieLogo';
@@ -219,13 +219,22 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
         return;
       }
 
+      // 接口删除成功后立即同步：先同步更新内存列表（用户无感知），再立即同步本地 IndexedDB
+      setSessions(sessions.filter((session) => session.id !== id));
+      if (user) {
+        await deleteCachedSession(id);
+        // 一并清理该会话的本地消息，避免 IndexedDB 残留孤儿记录
+        await deleteCachedMessagesBySession(id);
+      }
+
       if (currentSessionId === id.toString()) {
         navigate('/');
       }
 
       setDeleteConfirmId(null);
       showToast('删除成功', 'success');
-      await fetchSessions();
+      // 后台静默重新拉取，保证与服务器最终一致（此时本地已无该项，不会闪烁）
+      void fetchSessions();
     } catch (error) {
       showToast(extractApiErrorMessage(error), 'error');
     }

@@ -17,6 +17,8 @@ interface SessionStore {
   addSession: (session: SessionItem) => void;
   /** 更新指定会话的标题（AI 自动生成标题时使用） */
   updateSessionTitle: (sessionId: number, title: string) => void;
+  /** 更新指定会话的最后活跃时间（发送新消息后，使侧边栏即时按最近活跃重排） */
+  updateSessionTime: (sessionId: number, updateTime: string) => void;
 }
 
 export const useSessionStore = create<SessionStore>((set) => ({
@@ -35,6 +37,12 @@ export const useSessionStore = create<SessionStore>((set) => ({
     set((state) => ({
       sessions: state.sessions.map((item) =>
         item.id === sessionId ? { ...item, title } : item,
+      ),
+    })),
+  updateSessionTime: (sessionId, updateTime) =>
+    set((state) => ({
+      sessions: state.sessions.map((item) =>
+        item.id === sessionId ? { ...item, update_time: updateTime } : item,
       ),
     })),
 }));

@@ -7,7 +7,7 @@
  * @created 2026-07-30
  * @updated 2026-07-30
  */
-import { getByKey, getAllByIndex, deleteByKey, putRecord, putRecords } from '../db/indexedDB';
+import { getByKey, getAllByIndex, deleteByKey, deleteByIndex, putRecord, putRecords } from '../db/indexedDB';
 import type { Message } from '../types/chat';
 import type { SessionItem } from '../types/api';
 
@@ -131,6 +131,49 @@ export async function cacheSessions(userId: number, sessions: SessionItem[]): Pr
     }
   } catch (error) {
     console.warn('写入本地会话缓存失败', error);
+  }
+}
+
+/**
+ * 删除单条缓存会话（接口删除成功后立即同步本地，避免依赖整体重拉造成闪烁）。
+ * @param sessionId - 会话 ID
+ */
+export async function deleteCachedSession(sessionId: number): Promise<void> {
+  try {
+    await deleteByKey('sessions', sessionId);
+  } catch (error) {
+    console.warn('删除本地会话缓存失败', error);
+  }
+}
+
+/**
+ * 删除某会话在本地缓存的全部消息（删除会话时一并清理孤儿记录，避免按会话查询时残留）。
+ * @param sessionId - 会话 ID
+ */
+export async function deleteCachedMessagesBySession(sessionId: number): Promise<void> {
+  try {
+    await deleteByIndex('messages', 'by_session', sessionId);
+  } catch (error) {
+    console.warn('删除本地会话消息缓存失败', error);
+  }
+}
+
+/**
+ * 更新本地缓存中会话的最后活跃时间，使侧边栏顺序即时反映最近活跃。
+ * @param sessionId - 会话 ID
+ * @param updateTime - 更新时间（ISO 字符串），默认当前时间
+ */
+export async function touchCachedSession(
+  sessionId: number,
+  updateTime: string = new Date().toISOString(),
+): Promise<void> {
+  try {
+    const existing = await getByKey<CachedSession>('sessions', sessionId);
+    if (existing) {
+      await putRecord<CachedSession>('sessions', { ...existing, update_time: updateTime });
+    }
+  } catch (error) {
+    console.warn('更新本地会话缓存时间失败', error);
   }
 }
 

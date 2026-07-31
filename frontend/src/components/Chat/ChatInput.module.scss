@@ -87,6 +87,8 @@
   color: $color-text-secondary;
   font-size: 13px;
   font-weight: $font-weight-medium;
+  // 行高收紧为 1，使文字行盒与图标等高，确保图标与文字在垂直方向居中对齐
+  line-height: 1;
   cursor: pointer;
   transition: all 0.2s ease;
   user-select: none;
