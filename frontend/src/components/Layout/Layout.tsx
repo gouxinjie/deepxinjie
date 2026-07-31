@@ -7,7 +7,7 @@
  */
 import React from 'react';
 import type { ReactNode } from 'react';
-import { CirclePlus, Menu, PanelLeftOpen, Plus } from 'lucide-react';
+import { CirclePlus, Menu, PanelLeftOpen, Plus, Zap } from 'lucide-react';
 import classNames from 'classnames';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -58,7 +58,14 @@ const Layout: React.FC<LayoutProps> = ({
       <button className={styles.iconBtn} onClick={onToggleSidebar}>
         <Menu size={24} strokeWidth={1.5} />
       </button>
-      <div className={styles.mobileTitle}>{currentSessionTitle || '新会话'}</div>
+      {/* 中间区域：会话标题与模型信息纵向排列，标题在上方、模型名称与图标在下方 */}
+      <div className={styles.mobileCenter}>
+        <div className={styles.mobileTitle}>{currentSessionTitle || '新会话'}</div>
+        <div className={styles.mobileModel}>
+          <Zap size={12} className={styles.mobileModelIcon} />
+          <span>{'deepseek-v4-flash'}</span>
+        </div>
+      </div>
       <div className={styles.mobileActions}>
         <button className={styles.iconBtn} onClick={() => navigate('/')}>
           <CirclePlus size={24} strokeWidth={1.5} />

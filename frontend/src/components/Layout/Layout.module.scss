@@ -50,6 +50,9 @@
   background-color: $color-bg;
   z-index: 10;
   flex-shrink: 0;
+  // 顶部栏与下方内容分隔：底部描边 + 轻投影，移动端更易区分层级
+  border-bottom: 1px solid $color-border;
+  box-shadow: $shadow-sm;
 }
 
 .mobileActions {
@@ -57,18 +60,39 @@
   gap: 16px;
 }
 
+/* 移动端顶部栏中间区域：标题在上、模型信息在下，纵向排列 */
+.mobileCenter {
+  flex: 1;
+  @include flex(column, center, flex-start);
+  min-width: 0;
+  padding: 0 8px;
+}
+
 /* 移动端顶部栏会话标题，占据中间剩余空间，超长省略避免挤压按钮 */
 .mobileTitle {
-  flex: 1;
-  @include flex(row, flex-start, center);
   min-width: 0;
-  padding: 0 12px;
+  width: 100%;
   font-size: $font-size-lg;
   font-weight: $font-weight-medium;
   color: $color-text-main;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 移动端顶部栏模型信息行：主色图标 + 主色文字，位于标题下方 */
+.mobileModel {
+  @include flex(row, flex-start, center);
+  gap: 4px;
+  font-size: $font-size-xs;
+  font-weight: 500;
+  color: $color-primary;
+  line-height: 1.3;
+}
+
+/* 模型图标：固定尺寸，避免被压缩 */
+.mobileModelIcon {
+  flex-shrink: 0;
 }
 
 .iconBtn {
@@ -146,6 +170,9 @@
 
   .mobileHeader {
     @include flex(row, space-between, center);
+    // 适配刘海屏：顶部留出状态栏安全区，避免标题被遮挡
+    padding-top: env(safe-area-inset-top, 0px);
+    height: calc(56px + env(safe-area-inset-top, 0px));
   }
 
   .floatingHeader {
