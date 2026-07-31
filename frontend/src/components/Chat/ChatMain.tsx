@@ -3,7 +3,7 @@
  * @description 主聊天区域组件，负责会话消息渲染、流式对话、引用来源面板与滚动定位等核心交互。
  * @author gouxinjie
  * @created 2026-03-16
- * @updated 2026-07-30
+ * @updated 2026-07-31
  */
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDown, Code, FileText, Lightbulb, Share2, Sparkles, Zap } from 'lucide-react';
@@ -21,6 +21,7 @@ import ChatWelcome from './ChatWelcome';
 import Toast from '../../components/commons/Toast';
 import { extractApiErrorMessage, messageApi, sendChatStream, sessionApi } from '../../services/api';
 import { cacheMessages, getCachedMessages, upsertMessage, deleteCachedMessage } from '../../services/localCache';
+import generateUUID from '../../utils/uuid';
 
 /** 流式消息落盘节流间隔（毫秒），避免每个 chunk 都写 IndexedDB 造成主线程抖动 */
 const CACHE_PERSIST_INTERVAL = 200;
@@ -592,7 +593,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
     onOpen?: () => void;
     onRequestError?: () => void;
   }) => {
-    const aiMessageId = options.continueFromMessageId?.toString() ?? crypto.randomUUID();
+    const aiMessageId = options.continueFromMessageId?.toString() ?? generateUUID();
     const controller = new AbortController();
     let hasOpened = false;
     let activeMessageId = aiMessageId;
@@ -733,7 +734,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
     shouldScrollToBottomRef.current = true;
     autoScrollEnabledRef.current = true;
     const userMessage: Message = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       role: 'user',
       content,
     };
