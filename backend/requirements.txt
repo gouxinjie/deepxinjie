@@ -5,5 +5,7 @@ openai
 python-dotenv
 requests
 pyjwt
-passlib[bcrypt]
+passlib
+# 固定 bcrypt 版本，避免 passlib 0.8.1 与 bcrypt>=4.1 不兼容（__about__ 属性移除、72 字节密码限制导致哈希失败）
+bcrypt==4.0.1
 xmltodict
