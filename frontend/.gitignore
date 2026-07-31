@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# 单独编译 SCSS 时生成的产物（如 modal_compiled.css 及其 source map），非 Vite 标准构建输出，不应纳入版本库
+modal_compiled.css*
+*.css.map
