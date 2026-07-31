@@ -22,6 +22,7 @@ import Toast from '../../components/commons/Toast';
 import { extractApiErrorMessage, messageApi, sendChatStream, sessionApi } from '../../services/api';
 import { cacheMessages, getCachedMessages, upsertMessage, touchCachedSession } from '../../services/localCache';
 import generateUUID from '../../utils/uuid';
+import { useEvent } from '../../utils/useEvent';
 
 /** 首页背景装饰浮动光晕配置：位置、大小、运动轨迹与透明度 */
 interface FloatingGlow {
@@ -259,6 +260,13 @@ const ChatMain: React.FC<ChatMainProps> = ({
       if (anchorItems.length === 0) {
         return;
       }
+
+      // 锚点重算会遍历所有用户消息节点调用 getBoundingClientRect（强制同步布局），
+      // 仅在累计滚动位移超过阈值时才执行，避免高频 scroll 下每帧布局读取造成的卡顿
+      if (Math.abs(chatElement.scrollTop - lastAnchorCheckScrollTopRef.current) < 60) {
+        return;
+      }
+      lastAnchorCheckScrollTopRef.current = chatElement.scrollTop;
 
       const containerTop = chatElement.getBoundingClientRect().top;
       let currentAnchor = anchorItems[0].id;
@@ -1028,6 +1036,18 @@ const ChatMain: React.FC<ChatMainProps> = ({
       ? activeAnchorId
       : (anchorItems[anchorItems.length - 1]?.id ?? '');
 
+  // 将传给 React.memo 子组件（ChatMessage）的回调包成引用永远稳定的函数。
+  // 否则每次渲染都会生成新函数引用，导致 memo 失效：滚动时父组件重渲染会让全部历史消息
+  // 被迫重新解析 Markdown（rehype-highlight / rehype-katex），这就是滚动卡顿的主因。
+  const stableHandleEditSend = useEvent(handleEditSend);
+  const stableHandleRegenerate = useEvent(handleRegenerate);
+  const stableHandleContinueGenerate = useEvent(handleContinueGenerate);
+  const stableHandleOpenCitations = useEvent(handleOpenCitations);
+
+  // 锚点重算需遍历 getBoundingClientRect（强制同步布局），开销较大；
+  // 记录上次重算时的滚动位置，仅当累计位移超过阈值才重算，避免每帧布局读取造成卡顿
+  const lastAnchorCheckScrollTopRef = useRef(0);
+
   return (
     <div
       className={classNames(styles.container, {
@@ -1152,10 +1172,10 @@ const ChatMain: React.FC<ChatMainProps> = ({
               >
                 <ChatMessage
                   message={message}
-                  onEditSendMessage={handleEditSend}
-                  onRegenerate={() => handleRegenerate(message.id)}
-                  onContinueGenerate={() => handleContinueGenerate(message.id)}
-                  onOpenCitations={handleOpenCitations}
+                  onEditSendMessage={stableHandleEditSend}
+                  onRegenerate={stableHandleRegenerate}
+                  onContinueGenerate={stableHandleContinueGenerate}
+                  onOpenCitations={stableHandleOpenCitations}
                 />
               </div>
             ))}

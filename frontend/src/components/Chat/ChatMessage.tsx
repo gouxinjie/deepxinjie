@@ -37,10 +37,10 @@ interface ChatMessageProps {
   message: Message;
   /** 将编辑后的内容作为新消息发送的回调 */
   onEditSendMessage?: (newContent: string) => Promise<boolean>;
-  /** 重新生成回调 */
-  onRegenerate?: () => void;
-  /** 继续生成回调 */
-  onContinueGenerate?: () => void;
+  /** 重新生成回调，接收待重新生成的消息 id */
+  onRegenerate?: (messageId: string) => void;
+  /** 继续生成回调，接收待继续生成的消息 id */
+  onContinueGenerate?: (messageId: string) => void;
   /** 打开来源侧栏回调 */
   onOpenCitations?: (payload: { message: Message; activeCitationId?: number }) => void;
 }
@@ -471,7 +471,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
               {isStopped && !isDeepThinkMessage && (
                 <button
                   className={classNames(styles.actionBtn, styles.continueBtn, styles.actionAlignEnd)}
-                  onClick={onContinueGenerate}
+                  onClick={() => onContinueGenerate?.(message.id)}
                   title="继续生成"
                 >
                   <Play size={15} />
@@ -479,7 +479,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
                 </button>
               )}
               {(isCompleted || isStopped) && (
-                <button className={styles.actionBtn} onClick={onRegenerate} title="重新生成">
+                <button className={styles.actionBtn} onClick={() => onRegenerate?.(message.id)} title="重新生成">
                   <RotateCcw size={16} />
                 </button>
               )}
