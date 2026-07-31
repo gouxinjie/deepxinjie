@@ -301,12 +301,16 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
   };
 
   /**
-   * 登录成功后同步会话列表。
+   * 登录成功后同步会话列表，并在移动端收起侧边栏抽屉。
    */
   const handleLoginSuccess = () => {
     setShowLoginModal(false);
     showToast('登录成功', 'success');
     void fetchSessions();
+    // 移动端从侧边栏内登录时，抽屉本就展开，登录完成后收起，避免停留在展开态
+    if (window.innerWidth <= 750) {
+      onClose();
+    }
   };
 
   /**

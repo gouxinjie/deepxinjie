@@ -5,7 +5,9 @@
 // 所有颜色均取自主题变量，自动适配明暗主题与主色方案（蓝 / 绿）
 
 .page {
+  // 兼容旧浏览器：先声明 100vh，再用 100dvh 覆盖（dvh 随移动端浏览器导航栏动态变化）
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   background: var(--color-bg);
 }
@@ -195,6 +197,8 @@
   align-items: center;
   gap: 8px;
   margin-top: 16px;
+  // 与下方 Tab 之间留出间距，避免提示框紧贴切换栏
+  margin-bottom: 18px;
   padding: 10px 12px;
   border: 1px dashed $color-primary;
   border-radius: $radius-md;
@@ -229,18 +233,45 @@
 .demoHintPlaceholder {
   min-height: 16px;
   margin-top: 16px;
+  // 与登录模式提示框保持一致的底部间距，确保两种模式 Tab 位置统一
+  margin-bottom: 18px;
 }
 
-// 登录 / 注册 切换
+// 登录 / 注册 切换（分段控件 + 滑动指示条）
 .tabs {
+  position: relative;
   display: flex;
-  gap: 4px;
+  // 移除按钮间间距，由滑动指示条提供视觉分隔，保证两项各占一半
+  gap: 0;
   padding: 4px;
   border-radius: $radius-full;
   background: var(--color-bg-hover);
 }
 
+// 滑动指示条：白底药丸，在两项之间平移，承载选中态的底色与投影
+.tabIndicator {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  border-radius: $radius-full;
+  background: var(--color-surface);
+  box-shadow: $shadow-sm;
+  // 缓动曲线让切换更顺滑
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+// 注册项选中时，指示条平移到右侧半区
+.tabIndicatorRight {
+  transform: translateX(100%);
+}
+
 .tabButton {
+  // 抬升层级，使文字显示在指示条之上
+  position: relative;
+  z-index: 1;
   flex: 1;
   min-width: 0;
   height: 40px;
@@ -251,13 +282,13 @@
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color, border-color, color, box-shadow, opacity, transform 0.2s ease;
+  transition: color 0.2s ease;
 }
 
+// 选中态：文字用品牌主色强调，弱化背景（底色由指示条提供）
 .tabButtonActive {
-  background: var(--color-surface);
-  color: var(--color-text-main);
-  box-shadow: $shadow-sm;
+  color: var(--color-primary);
+  font-weight: 600;
 }
 
 .form {
@@ -328,6 +359,9 @@
     background: transparent;
     color: var(--color-text-main);
     font-size: 15px;
+    // 去除 iOS Safari 默认的圆角内阴影与外观样式，确保与设计方案一致
+    appearance: none;
+    -webkit-appearance: none;
 
     &::placeholder {
       color: var(--color-text-tertiary);
@@ -488,14 +522,85 @@
   }
 
   .main {
+    position: relative;
+    overflow: hidden;
+    // 移动端使用动态视口高度，避免地址栏收起/展开时高度跳动
     min-height: 100vh;
+    min-height: 100dvh;
+    // 顶部叠加一层品牌主色的柔光，让纯色背景更有层次（不覆盖底部留白）
+    background:
+      radial-gradient(120% 70% at 50% -8%, var(--color-primary-light) 0%, transparent 55%),
+      var(--color-bg);
+    // 左右与底部预留安全区域，避免内容被刘海屏/灵动岛/Home 指示条遮挡
+    padding-left: max(24px, env(safe-area-inset-left));
+    padding-right: max(24px, env(safe-area-inset-right));
+    padding-bottom: max(40px, env(safe-area-inset-bottom));
+    // 禁止容器内部滚动时的橡皮筋回弹影响外层页面
+    overscroll-behavior-y: contain;
+  }
+
+  // 环境光斑：两枚模糊主色圆斑，营造轻盈氛围，不干扰内容可读性
+  .main::before,
+  .main::after {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    border-radius: var(--radius-round);
+    background: var(--color-primary);
+    opacity: 0.1;
+    filter: blur(44px);
+    pointer-events: none;
+  }
+
+  .main::before {
+    width: 280px;
+    height: 280px;
+    top: -90px;
+    right: -70px;
+  }
+
+  .main::after {
+    width: 220px;
+    height: 220px;
+    bottom: -70px;
+    left: -50px;
+  }
+
+  // 卡片与页脚置于光斑之上，保证内容层级清晰
+  .card,
+  .mainFooter {
+    position: relative;
+    z-index: 1;
   }
 }
 
 @media (max-width: 480px) {
   .main {
-    padding: 24px 12px;
+    // 横向与底部叠加安全区域，避免内容贴边或被底部指示条遮挡
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+    padding-top: 24px;
+    padding-bottom: max(28px, env(safe-area-inset-bottom));
     gap: 14px;
+  }
+
+  // 演示提示在窄屏允许换行，避免账号/密码信息被挤压成单行溢出
+  .demoHint {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .demoHintText {
+    flex: 1 1 100%;
+  }
+
+  // 移动端去除点击高亮与双击缩放延迟，提升触控手感
+  .tabButton,
+  .submitButton,
+  .link,
+  .agreementCheck {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 
   .card {
@@ -536,15 +641,22 @@
     padding: 3px;
   }
 
+  // 手机端指示条内缩量同步为 3px，保持与容器一致
+  .tabIndicator {
+    top: 3px;
+    bottom: 3px;
+    left: 3px;
+    width: calc(50% - 3px);
+  }
+
   .tabButton {
     height: 38px;
     font-size: 15px;
   }
 
-  // 激活态加粗 + 更厚重的投影，与卡片底色拉开层次
+  // 激活态加粗（底色与投影已由滑动指示条承载，无需重复阴影）
   .tabButtonActive {
     font-weight: 600;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
   }
 
   .form {
@@ -564,6 +676,11 @@
   .inputWrapper {
     height: 44px;
     padding: 0 14px;
+
+    // 字号提升到 16px，避免 iOS Safari 聚焦输入框时自动放大页面
+    input {
+      font-size: 16px;
+    }
   }
 
   .submitButton {
@@ -581,7 +698,10 @@
 // 更小屏幕进一步收紧
 @media (max-width: 380px) {
   .main {
-    padding: 20px 10px;
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+    padding-top: 20px;
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
   }
 
   .card {

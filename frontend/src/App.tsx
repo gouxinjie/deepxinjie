@@ -88,6 +88,17 @@ function App() {
     };
   }, [isMobile, isSidebarOpen]);
 
+  /**
+   * 兜底：鉴权建立（登录成功）后，移动端侧边栏强制回到关闭态，
+   * 避免任何异常路径下登录完抽屉仍处于展开状态。
+   */
+  useEffect(() => {
+    if (isAuthenticated) {
+      setIsSidebarOpen(false);
+      setIsSidebarLayerActive(false);
+    }
+  }, [isAuthenticated]);
+
   // 协议页为公开页面，不依赖登录态，优先于登录态判断直接渲染
   if (location.pathname.startsWith('/agreement')) {
     return (

@@ -191,6 +191,11 @@ const LoginPage: React.FC = () => {
           )}
 
           <div className={styles.tabs}>
+            {/* 滑动指示条：随 mode 在左右半区之间平移，承载选中态底色 */}
+            <span
+              className={cn(styles.tabIndicator, mode === 'register' ? styles.tabIndicatorRight : '')}
+              aria-hidden="true"
+            />
             <button
               type="button"
               className={`${styles.tabButton} ${mode === 'login' ? styles.tabButtonActive : ''}`}
