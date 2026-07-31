@@ -97,12 +97,13 @@
 .quickActionChip {
   @include flex(row, flex-start, center);
   gap: 8px;
-  padding: 10px 16px;
+  // 适当放大内边距与字号，提升点击区域与可读性
+  padding: 12px 20px;
   border-radius: $radius-full;
   border: 1px solid $color-border-light;
   background-color: $color-bg;
   color: $color-text-secondary;
-  font-size: $font-size-sm;
+  font-size: $font-size-base;
   font-weight: $font-weight-medium;
   cursor: pointer;
   transition: background-color, border-color, color, box-shadow, opacity, transform 0.2s ease;
@@ -122,6 +123,12 @@
 .quickActionIcon {
   @include flex-center;
   color: $color-primary;
+
+  // 放大图标，与放大后的 chip 保持视觉协调
+  svg {
+    width: 18px;
+    height: 18px;
+  }
 }
 
 // 欢迎页底部免责声明
@@ -359,8 +366,14 @@
   }
 
   .quickActionChip {
-    padding: 8px 12px;
-    font-size: $font-size-xs;
+    // 移动端同步放大，保持与桌面端一致的触控体验
+    padding: 10px 14px;
+    font-size: $font-size-sm;
+  }
+
+  .quickActionIcon svg {
+    width: 16px;
+    height: 16px;
   }
 
   .welcomeContent .disclaimer {

@@ -143,6 +143,12 @@ const ChatMain: React.FC<ChatMainProps> = ({
     setQuickFill((prev) => ({ value, trigger: (prev?.trigger ?? 0) + 1 }));
   }, []);
 
+  // 快捷填充被输入框消费后的回调：清除 quickFill 状态，避免下次新建会话时重复填充。
+  // 使用稳定引用，避免内联函数导致 ChatInput 的副作用每次渲染都重跑。
+  const handleAutoFillConsumed = useCallback(() => {
+    setQuickFill(undefined);
+  }, []);
+
   const chatAreaRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   // 滚动事件 rAF 节流标记：避免高频 scroll 事件同步执行昂贵计算
@@ -874,6 +880,9 @@ const ChatMain: React.FC<ChatMainProps> = ({
    */
   useEffect(() => {
     const timer = window.setTimeout(() => {
+      // 会话切换时清除快捷提问填充态，避免旧预设文案残留到新会话输入框
+      setQuickFill(undefined);
+
       if (sessionId) {
         if (isStartingNewChat.current) {
           isStartingNewChat.current = false;
@@ -1121,6 +1130,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
                   onToggleDeepThink={setIsDeepThink}
                   onToggleSearch={setIsSearch}
                   autoFill={quickFill}
+                  onAutoFillConsumed={handleAutoFillConsumed}
                 />
               </div>
               <motion.div

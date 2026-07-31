@@ -36,6 +36,8 @@ interface ChatInputProps {
   sessionId?: string;
   /** 外部触发的快捷填充内容（trigger 变化时写入输入框并聚焦） */
   autoFill?: { value: string; trigger: number };
+  /** 快捷填充被输入框消费（已写入并聚焦）后的回调，用于通知父组件清除填充态，避免下次挂载时重复填充。 */
+  onAutoFillConsumed?: () => void;
 }
 
 type ToastState = {
@@ -56,6 +58,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
   autoFocus = false,
   sessionId,
   autoFill,
+  onAutoFillConsumed,
 }) => {
   const [message, setMessage] = useState('');
   const [isDeepThink, setIsDeepThink] = useState(initialDeepThink);
@@ -115,8 +118,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
     if (autoFill) {
       setMessage(autoFill.value);
       textareaRef.current?.focus();
+      // 通知父组件填充已被消费，及时清理 quickFill，避免下次新建会话时重复填充
+      onAutoFillConsumed?.();
     }
-  }, [autoFill]);
+  }, [autoFill, onAutoFillConsumed]);
 
   useEffect(() => {
     if (autoFocus && textareaRef.current) {
