@@ -553,7 +553,15 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, showOverlay, onClose,
 
           {user && userMenuOpen && (
             <div className={styles.userMenu} ref={userMenuRef}>
-              <div className={styles.userMenuItem}>
+              <div
+                className={styles.userMenuItem}
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  setUserMenuOpen(false);
+                  showToast('功能开发中', 'info');
+                }}
+              >
                 <Settings size={18} strokeWidth={1.5} />
                 <span>系统设置</span>
               </div>

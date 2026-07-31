@@ -61,7 +61,7 @@
 
 .title {
   margin: 0;
-  font-size: $font-size-2xl;
+  font-size: $font-size-xl; // 字号调小一号
   line-height: 1.2;
   color: $color-text-main;
   font-weight: $font-weight-semibold;
@@ -136,7 +136,7 @@
 }
 
 .citationTitle {
-  font-size: 15px;
+  font-size: 14px; // 字号调小一号
   line-height: 1.42;
   color: $color-text-main;
   font-weight: $font-weight-semibold;
